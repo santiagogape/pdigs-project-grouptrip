@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import HomeView from '@/views/HomeView.vue'
+import TestFirebase from '@/views/TestFirebase.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -15,12 +16,17 @@ const router = createRouter({
       // route level code-splitting
       // this generates a separate chunk (About.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
-      component: () => import('../views/AboutView.vue'),
+      component: () => import('@/views/AboutView.vue'),
     },
     {
       path: '/dev',
-      component: () => import('../views/PlaygroundView.vue'),
+      component: () => import('@/views/PlaygroundView.vue'),
     },
+    {
+      path: '/test',
+      name: 'test-firebase',
+      component: TestFirebase
+    }
   ],
 })
 
