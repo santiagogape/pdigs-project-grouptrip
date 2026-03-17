@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import ADummy from '@/components/testing/ADummy.vue'
+import NavBar from '@/components/testing/NavBar.vue'
+import TheFooter from '@/components/testing/TheFooter.vue'
 </script>
 
 <template>
-  <v-container>
-    <h1>Dev Playground</h1>
-    <ADummy />
-  </v-container>
+  <v-app>
+    <NavBar />
+    <v-container> </v-container>
+    <TheFooter />
+  </v-app>
 </template>

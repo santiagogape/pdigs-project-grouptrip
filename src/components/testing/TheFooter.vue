@@ -1,0 +1,153 @@
+<script setup lang="ts">
+const topSurfaces = [1, 2, 3]
+</script>
+
+<template>
+  <footer class="footer-root">
+    <section class="footer-top">
+      <div class="footer-top-inner">
+        <v-sheet
+          v-for="item in topSurfaces"
+          :key="item"
+          class="image-surface"
+          rounded="0"
+          elevation="0"
+        />
+      </div>
+    </section>
+
+    <section class="footer-cta">
+      <div class="footer-cta-inner">
+        <h2 class="cta-title">Listo para tu próxima aventura?</h2>
+        <p class="cta-text">sdhsjk dskjhd sjdhjs aldjas akdksa sdk sldk ldskdls klddsj</p>
+
+        <RouterLink to="#" class="cta-link">
+          <v-btn class="cta-btn" rounded="lg" elevation="0" size="x-large">
+            Comenza ahora
+            <v-icon end>mdi-arrow-right</v-icon>
+          </v-btn>
+        </RouterLink>
+      </div>
+    </section>
+
+    <section class="footer-bottom">
+      <div class="footer-bottom-inner">
+        <v-img src="@/assets/logo/icon.small.png" alt="Logo" width="170" contain />
+      </div>
+    </section>
+  </footer>
+</template>
+
+<style scoped>
+.footer-root {
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  display: block;
+}
+
+.footer-top {
+  background-color: var(--color-orange);
+  min-height: 210px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.25rem;
+}
+
+.footer-top-inner {
+  width: 100%;
+  padding: 2rem 3rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+.image-surface {
+  width: 74px;
+  height: 50px;
+  background-color: rgba(0, 0, 0, 0.12);
+}
+
+.footer-cta {
+  background-color: #ebebeb;
+}
+
+.footer-cta-inner {
+  margin: 0 auto;
+  min-height: 360px;
+  padding: 4rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1.25rem;
+}
+
+.cta-title {
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: black;
+}
+
+.cta-text {
+  font-size: 1.15rem;
+  color: rgba(0, 0, 0, 0.45);
+  max-width: 760px;
+}
+
+.cta-link {
+  text-decoration: none;
+}
+
+.cta-btn {
+  background-color: var(--color-orange);
+  color: black;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 1.1rem;
+  padding-inline: 1.8rem;
+  min-height: 66px;
+}
+
+.footer-bottom {
+  background-color: var(--color-beige);
+  min-height: 215px;
+  display: flex;
+  align-items: center;
+}
+
+.footer-bottom-inner {
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 3rem;
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 760px) {
+  .footer-top-inner {
+    padding: 1.5rem;
+    gap: 1rem;
+  }
+
+  .image-surface {
+    width: 56px;
+    height: 40px;
+  }
+
+  .footer-cta-inner {
+    min-height: 300px;
+    padding: 3rem 1.25rem;
+  }
+
+  .footer-bottom-inner {
+    padding: 1.5rem;
+    justify-content: center;
+  }
+}
+</style>
