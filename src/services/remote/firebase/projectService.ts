@@ -1,4 +1,4 @@
-import { db } from '@/services/remote/firebase/config.js'; // Asegura el uso del alias @ si lo configuraste
+import { db } from '@/services/remote/firebase/config';
 import { 
   collection, doc, addDoc, getDoc, getDocs, query, where, 
   deleteDoc,

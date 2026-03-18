@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { reactive } from 'vue';
+import { useRouter } from 'vue-router';
+import { projectService } from '@/services/remote/firebase/projectService';
 
 const emit = defineEmits(['cancelar', 'crear']);
 
@@ -24,6 +26,27 @@ const emitForm = () => {
   };
   emit('crear', formData);
 };
+
+const router = useRouter();
+
+const handleCreateProject = async (formData: any) => {
+  try {
+    // 1. Llamamos a la API (necesitas un ownerId, aquí uso uno de prueba)
+    const ownerId = "id-del-usuario-actual"; 
+    
+    // createProject devuelve el ID del documento creado en Firestore
+    const newId = await projectService.createProject(formData, ownerId);
+
+    // 2. Si se creó correctamente, viajamos a la página de detalle
+    if (newId) {
+      router.push({ name: 'ProjectDetail', params: { id: newId } });
+    }
+  } catch (error) {
+    console.error("Error al crear el proyecto:", error);
+    alert("Hubo un error al crear el viaje");
+  }
+};
+
 </script>
 
 <template>
@@ -86,7 +109,7 @@ const emitForm = () => {
         <button @click="$emit('cancelar')" type="button" class="setting-form-button-cancel">
           Cancelar
         </button>
-        <button type="submit" class="setting-form-button-submit">
+        <button type="submit" class="setting-form-button-submit" @click="handleCreateProject(form)">
           Crear Viaje
         </button>
       </div>
@@ -99,7 +122,7 @@ const emitForm = () => {
 /* Contenedor */
 .setting-form-container {
   width: auto;
-  margin: 40px 20%;
+  margin: 40px 20%  ;
   padding: 24px;
   background: #ffffff;
   border-radius: 16px;
