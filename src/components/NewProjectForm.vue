@@ -98,8 +98,8 @@ const emitForm = () => {
 <style scoped>
 /* Contenedor */
 .setting-form-container {
-  max-width: 600px;
-  margin: 40px auto;
+  width: auto;
+  margin: 40px 20%;
   padding: 24px;
   background: #ffffff;
   border-radius: 16px;

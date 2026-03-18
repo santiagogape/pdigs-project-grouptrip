@@ -6,7 +6,7 @@ const navItems = [
 </script>
 
 <template>
-  <v-app-bar flat class="nav-bar px-4" height="92">
+  <v-app-bar app flat class="nav-bar px-4" height="92">
     <div class="nav-left">
       <RouterLink to="#" class="logo-link" aria-label="Ir al inicio">
         <img src="@/assets/logo/icon.small.png" alt="Logo" height="60" width="140" contain />

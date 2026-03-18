@@ -7,8 +7,11 @@ import NewProjectForm from '@/components/NewProjectForm.vue'
 <template>
   <v-app>
     <NavBar />
-    <v-container> </v-container>
-    <NewProjectForm />
+    <v-main>
+      <v-container class="mt-5" fluid>
+        <NewProjectForm />
+      </v-container>
+    </v-main>
     <TheFooter />
   </v-app>
 </template>

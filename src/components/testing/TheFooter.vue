@@ -3,7 +3,7 @@ const topSurfaces = [1, 2, 3]
 </script>
 
 <template>
-  <footer class="footer-root">
+  <v-footer class="footer-root">
     <section class="footer-top">
       <div class="footer-top-inner">
         <v-sheet
@@ -35,21 +35,19 @@ const topSurfaces = [1, 2, 3]
         <v-img src="@/assets/logo/icon.small.png" alt="Logo" width="170" contain />
       </div>
     </section>
-  </footer>
+  </v-footer>
 </template>
 
 <style scoped>
+
 .footer-root {
-  width: 100vw;
-  max-width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
+  width: 100%;
   display: block;
+  padding: 0 !important;
 }
 
 .footer-top {
   background-color: var(--color-orange);
-  min-height: 210px;
   display: flex;
   align-items: center;
   justify-content: center;
