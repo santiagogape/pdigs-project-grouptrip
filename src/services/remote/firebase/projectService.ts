@@ -1,6 +1,6 @@
-import { db } from '@/services/remote/firebase/config';
-import { 
-  collection, doc, addDoc, getDoc, getDocs, query, where, 
+import { auth, db } from '@/services/remote/firebase/config';
+import {
+  collection, doc, addDoc, getDoc, getDocs, query, where,
   deleteDoc,
   type Unsubscribe,
   onSnapshot
@@ -24,19 +24,23 @@ export const projectService = {
     }
     return null;
   },
-  
-  async createProject(projectData: Omit<Proyecto, 'projectId'>, ownerId: string): Promise<string> {
+
+  async createProject(projectData: Omit<Proyecto, 'projectId'>): Promise<string> {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error("Debes estar logueado");
+
     const projectRef = collection(db, 'proyectos');
-    
-    // Convertimos a objeto plano para evitar problemas con tipos de TS
-    const docData = { ...projectData, owner: ownerId };
+
+    // Guardamos el proyecto con el owner real
+    const docData = { ...projectData, owner: currentUser.uid };
     const newDoc = await addDoc(projectRef, docData);
-    
+
+    // Crear la relación en la tabla intermedia
     const relation: ProyectoUsuario = {
       projectId: newDoc.id,
-      userId: ownerId
+      userId: currentUser.uid
     };
-    
+
     await addDoc(collection(db, 'proyecto_usuario'), relation);
     return newDoc.id;
   },
@@ -50,13 +54,13 @@ export const projectService = {
   async getProject(projectId: string): Promise<Proyecto | null> {
     const docRef = doc(db, 'proyectos', projectId);
     const snap = await getDoc(docRef);
-    
+
     if (snap.exists()) {
       // Mapeamos explícitamente el ID de Firestore a tu projectId de la interfaz
       const data = snap.data();
-      return { 
+      return {
         ...data,
-        projectId: snap.id 
+        projectId: snap.id
       } as Proyecto;
     }
     return null;
@@ -67,7 +71,7 @@ export const projectService = {
     const snap = await getDocs(eventsRef);
     return snap.docs.map(doc => ({
       ...doc.data(),
-    } as Evento)); 
+    } as Evento));
   },
 
   async getProjectsByUser(userId: string): Promise<Proyecto[]> {
@@ -75,7 +79,7 @@ export const projectService = {
     const q = query(relationRef, where('userId', '==', userId));
     const snap = await getDocs(q);
     const projectIds = snap.docs.map(doc => doc.data().projectId);
-    
+
     const projects: Proyecto[] = [];
     for (const id of projectIds) {
       const project = await this.getProject(id);
@@ -86,6 +90,7 @@ export const projectService = {
 
   async removeProject(projectId: string): Promise<void> {
     const res = await this._removeProjectUserRelation(projectId);
+    if (!res) throw new Error("No se pudo eliminar las relaciones del proyecto");
     await deleteDoc(doc(db, 'proyectos', projectId));
   },
 
@@ -104,10 +109,10 @@ export const projectService = {
     if (snap.docs[0] == undefined) return false;
     return deleteDoc(snap.docs[0].ref).then(() => true);
   },
-  
+
   subscribeToProject(projectId: string, callback: (p: Proyecto | null) => void): Unsubscribe {
     const docRef = doc(db, 'proyectos', projectId);
-    
+
     // onSnapshot devuelve una función para dejar de escuchar
     return onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
@@ -120,7 +125,7 @@ export const projectService = {
 
   subscribeToEvents(projectId: string, callback: (e: Evento[]) => void): Unsubscribe {
     const eventsRef = collection(db, 'proyectos', projectId, 'eventos');
-    
+
     return onSnapshot(eventsRef, (snap) => {
       const events = snap.docs.map(doc => ({
         ...doc.data(),

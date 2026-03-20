@@ -24,13 +24,13 @@ let unsubProject: () => void;
 let unsubEvents: () => void;
 
 // Lógica para obtener miembros reales
-const cargarMiembros = async (id: string) => {
+const cargarMiembros = async () => {
   try {
     // 1. Buscamos en la tabla de relación 'proyecto_usuario'
     // Nota: Podrías añadir una función getUsersByProject en tu projectService similar a getProjectsByUser
     // Por ahora, lo simularemos consumiendo tu getUser para cada relación
     // En una app real, lo ideal es una query directa a la tabla de relación
-    
+
     // Simulación de carga de miembros (dueño + colaboradores)
     if (proyecto.value?.owner) {
       const owner = await projectService.getUser(proyecto.value.owner);
@@ -52,7 +52,7 @@ onMounted(async () => {
     if (data) {
       proyecto.value = data;
       // Una vez tenemos el proyecto, cargamos sus miembros reales
-      cargarMiembros(projectId);
+      cargarMiembros();
     }
     loading.value = false;
   });
@@ -70,7 +70,6 @@ onUnmounted(() => {
 });
 
 // Formateadores
-const formatFecha = (ts?: number) => ts ? new Date(ts).toLocaleDateString() : '---';
 const formatHora = (ts?: number) => ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
 </script>
 
@@ -119,6 +118,7 @@ const formatHora = (ts?: number) => ts ? new Date(ts).toLocaleTimeString([], { h
                   <v-timeline-item v-for="(ev, i) in eventos" :key="i" dot-color="indigo-lighten-4" size="x-small">
                     <div class="d-flex justify-space-between">
                       <span class="text-caption font-weight-bold text-indigo">{{ formatHora(ev.fechaHoraInicio) }}</span>
+                      <span class="text-caption font-weight-bold text-indigo">{{ formatHora(ev.fechaHoraFin) }}</span>
                       <div class="flex-grow-1 ml-4">
                         <div class="text-body-2 font-weight-bold">{{ ev.nombre }}</div>
                         <div class="text-caption text-grey">{{ ev.tipo }}</div>

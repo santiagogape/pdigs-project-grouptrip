@@ -1,14 +1,14 @@
 <script setup lang="ts">
 const navItems = [
-  { label: 'Mis Proyectos', to: '#' },
-  { label: 'Nuevo Proyecto', to: '#' },
+  { label: 'Mis Proyectos', to: '/dashboard' },
+  { label: 'Nuevo Proyecto', to: '/new-project' },
 ]
 </script>
 
 <template>
   <v-app-bar app flat class="nav-bar px-4" height="92">
     <div class="nav-left">
-      <RouterLink to="#" class="logo-link" aria-label="Ir al inicio">
+      <RouterLink to="/about" class="logo-link" aria-label="Ir al inicio">
         <img src="@/assets/logo/icon.small.png" alt="Logo" height="60" width="140" contain />
       </RouterLink>
 
@@ -27,7 +27,7 @@ const navItems = [
     </div>
 
     <template #append>
-      <RouterLink to="#" class="profile-link" aria-label="Perfil de usuario">
+      <RouterLink to="/profile" class="profile-link" aria-label="Perfil de usuario">
         <v-avatar size="68" class="profile-avatar">
           <v-icon size="40">mdi-account-outline</v-icon>
         </v-avatar>
