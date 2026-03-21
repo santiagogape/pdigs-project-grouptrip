@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import NewProjectForm from './components/NewProjectForm.vue';
+import { RouterView } from 'vue-router'
 </script>
 
 <template>
-  <NewProjectForm />
-
+  <RouterView />
 </template>
-<style>
-</style>
+<style></style>

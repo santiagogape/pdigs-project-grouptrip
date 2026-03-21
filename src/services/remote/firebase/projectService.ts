@@ -1,4 +1,4 @@
-import { db } from '@/services/remote/firebase/config'; // Asegura el uso del alias @ si lo configuraste
+import { auth, db } from '@/services/remote/firebase/config';
 import {
   collection, doc, addDoc, getDoc, getDocs, query, where,
   deleteDoc,
@@ -25,16 +25,20 @@ export const projectService = {
     return null;
   },
 
-  async createProject(projectData: Omit<Proyecto, 'projectId'>, ownerId: string): Promise<string> {
+  async createProject(projectData: Omit<Proyecto, 'projectId'>): Promise<string> {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error("Debes estar logueado");
+
     const projectRef = collection(db, 'proyectos');
 
-    // Convertimos a objeto plano para evitar problemas con tipos de TS
-    const docData = { ...projectData, owner: ownerId };
+    // Guardamos el proyecto con el owner real
+    const docData = { ...projectData, owner: currentUser.uid };
     const newDoc = await addDoc(projectRef, docData);
 
+    // Crear la relación en la tabla intermedia
     const relation: ProyectoUsuario = {
       projectId: newDoc.id,
-      userId: ownerId
+      userId: currentUser.uid
     };
 
     await addDoc(collection(db, 'proyecto_usuario'), relation);
@@ -86,6 +90,7 @@ export const projectService = {
 
   async removeProject(projectId: string): Promise<void> {
     const res = await this._removeProjectUserRelation(projectId);
+    if (!res) throw new Error("No se pudo eliminar las relaciones del proyecto");
     await deleteDoc(doc(db, 'proyectos', projectId));
   },
 

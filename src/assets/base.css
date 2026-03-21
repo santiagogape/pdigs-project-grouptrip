@@ -19,6 +19,12 @@
   --vt-c-text-light-2: rgba(60, 60, 60, 0.66);
   --vt-c-text-dark-1: var(--vt-c-white);
   --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
+
+  /* color palette for this project */
+  --color-orange: #faa613;
+  --color-Molten-Orange: #f44708;
+  --color-Oxblood: #a10702;
+  --color-beige: #996f2b;
 }
 
 /* semantic color variables for this project */

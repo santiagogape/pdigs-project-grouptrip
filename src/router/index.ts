@@ -1,33 +1,73 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import TestFirebase from '@/views/TestFirebase.vue'
+import { auth } from '@/services/remote/firebase/config';
+
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/',
+      path: '/example',
       name: 'home',
       component: HomeView,
     },
     {
       path: '/about',
       name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
       component: () => import('@/views/AboutView.vue'),
     },
     {
-      path: '/dev',
-      component: () => import('@/views/PlaygroundView.vue'),
+      path: '/new-project',
+      name: 'new-project',
+      meta: { requiresAuth: true },
+      component: () => import('@/views/CreateProjectView.vue'),
     },
     {
       path: '/test',
       name: 'test-firebase',
-      component: TestFirebase
+      component: TestFirebase,
+    },
+    {
+      path: '/proyecto/:id',
+      name: 'ProjectDetail',
+      meta: { requiresAuth: true },
+      component: () => import('@/views/ProjectDetail.vue'),
+    },
+    {
+      path: '/login',
+      name: 'Login',
+      component: () => import('@/views/LoginView.vue'),
+    },
+    {
+      path: '/register',
+      name: 'Register',
+      component: () => import('@/views/RegisterView.vue'),
+    },
+    {
+      path: '/dashboard',
+      name: 'Dashboard',
+      meta: { requiresAuth: true },
+      component: () => import('@/views/DashboardView.vue'),
     }
   ],
 })
+
+router.beforeEach(async (to) => {
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  const currentUser = auth.currentUser;
+
+  // Si requiere auth y no hay usuario -> Mandar al Login
+  if (requiresAuth && !currentUser) {
+    return { name: 'Login' }; // O la ruta de tu login
+  }
+
+  // Si el usuario ya está logueado e intenta ir al Login o Register -> Mandar al Dashboard
+  if ((to.name === 'Login' || to.name === 'Register') && currentUser) {
+    return { name: 'Dashboard' };
+  }
+
+  // En cualquier otro caso, el router sigue su camino normal (no retornar nada o retornar true)
+});
 
 export default router
