@@ -32,8 +32,8 @@ const router = useRouter();
 const handleCreateProject = async (formData: any) => {
   try {
     // 1. Llamamos a la API (necesitas un ownerId, aquí uso uno de prueba)
-    const ownerId = "id-del-usuario-actual"; 
-    
+    const ownerId = "id-del-usuario-actual";
+
     // createProject devuelve el ID del documento creado en Firestore
     const newId = await projectService.createProject(formData, ownerId);
 
@@ -75,7 +75,14 @@ const handleCreateProject = async (formData: any) => {
         </div>
         <div class="setting-form-group">
           <label class="setting-form-label">Fecha de fin *</label>
-          <input v-model="form.fechaFin" type="date" required class="setting-form-input"/>
+          <input
+            v-model="form.fechaFin"
+            type="date"
+            :min="form.fechaInicio"
+            required
+            class="setting-form-input"
+          />
+          <!-- <input v-model="form.fechaFin" type="date" required class="setting-form-input"/> -->
         </div>
       </div>
 

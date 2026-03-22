@@ -12,6 +12,10 @@ const route = useRoute();
 const router = useRouter();
 const projectId = route.params.id as string;
 
+const dialog = ref(false);
+const shareLink = computed(() => {
+  return `${window.location.origin}/proyecto/${projectId}`;
+});
 // Estados reactivos
 const proyecto = ref<Proyecto | null>(null);
 const eventos = ref<Evento[]>([]);
@@ -71,6 +75,16 @@ onUnmounted(() => {
 
 // Formateadores
 const formatHora = (ts?: number) => ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
+
+//Copy al portapapeles de modal de share
+const copyLink = async () => {
+  try {
+    await navigator.clipboard.writeText(shareLink.value);
+    alert('Link copiado ✅');
+  } catch (e) {
+    alert('Error al copiar');
+  }
+};
 </script>
 
 <template>
@@ -87,7 +101,21 @@ const formatHora = (ts?: number) => ts ? new Date(ts).toLocaleTimeString([], { h
             <h1 class="text-h4 font-weight-black color-navy">{{ proyecto.destino }}</h1>
             <p class="text-subtitle-1 text-grey-darken-1">{{ proyecto.descripcion }}</p>
           </div>
-          <v-btn color="indigo" rounded="xl" elevation="0" class="px-6">Dashboard</v-btn>
+          <div>
+            <v-btn
+              class="px-6"
+              style="margin-right: 1rem;"
+              elevation="0"
+              rounded="xl"
+              color="#4caf50"
+              prepend-icon="mdi-export-variant"
+              variant="flat"
+              @click="dialog = true"
+            >
+              Share
+            </v-btn>
+            <v-btn color="indigo" rounded="xl" elevation="0" class="px-6">Dashboard</v-btn>
+          </div>
         </header>
 
         <v-row >
@@ -162,6 +190,41 @@ const formatHora = (ts?: number) => ts ? new Date(ts).toLocaleTimeString([], { h
     </v-main>
     <TheFooter />
   </v-app>
+  <v-dialog v-model="dialog" max-width="500">
+  <v-card class="custom-card card-container mb-6">
+
+    <v-card-title class="pa-6 text-subtitle-1 font-weight-bold">
+      Compartir proyecto
+    </v-card-title>
+
+    <v-card-text>
+      <p>Copia este enlace para compartir:</p>
+
+      <v-text-field
+        v-model="shareLink"
+        readonly
+        append-inner-icon="mdi-content-copy"
+        @click:append-inner="copyLink"
+      />
+    </v-card-text>
+
+    <v-card-actions>
+      <v-spacer></v-spacer>
+      <v-btn
+            class="text-none"
+            color="grey"
+            min-width="92"
+            variant="outlined"
+            rounded
+            text @click="dialog = false"
+          >
+            Cerrar
+      </v-btn>
+
+    </v-card-actions>
+
+  </v-card>
+</v-dialog>
 </template>
 
 <style scoped>
