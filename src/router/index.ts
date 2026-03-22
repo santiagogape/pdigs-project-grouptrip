@@ -49,6 +49,12 @@ const router = createRouter({
       name: 'Dashboard',
       meta: { requiresAuth: true },
       component: () => import('@/views/DashboardView.vue'),
+    },
+    {
+      path: '/share/:id',
+      name: 'Share',
+      meta: { requiresAuth: true },
+      component: () => import('@/views/SharePage.vue'),
     }
   ],
 })
@@ -59,7 +65,10 @@ router.beforeEach(async (to) => {
 
   // Si requiere auth y no hay usuario -> Mandar al Login
   if (requiresAuth && !currentUser) {
-    return { name: 'Login' }; // O la ruta de tu login
+    return {
+      name: 'Login',
+      query: { redirect: to.fullPath }
+    }; // O la ruta de tu login
   }
 
   // Si el usuario ya está logueado e intenta ir al Login o Register -> Mandar al Dashboard

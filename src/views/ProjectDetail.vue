@@ -14,7 +14,7 @@ const projectId = route.params.id as string;
 
 const dialog = ref(false);
 const shareLink = computed(() => {
-  return `${window.location.origin}/proyecto/${projectId}`;
+  return `${window.location.origin}/share/${projectId}`;
 });
 // Estados reactivos
 const proyecto = ref<Proyecto | null>(null);

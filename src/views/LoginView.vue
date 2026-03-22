@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { authService } from '@/services/remote/firebase/authService';
 import NavBar from '@/components/testing/NavBar.vue';
 import TheFooter from '@/components/testing/TheFooter.vue';
 
 const router = useRouter();
+const route = useRoute();
 const loading = ref(false);
 const showPassword = ref(false);
+
 
 const form = reactive({
   email: '',
@@ -15,11 +17,20 @@ const form = reactive({
 });
 
 const handleLogin = async () => {
+  await router.isReady();
   if (!form.email || !form.password) return;
   loading.value = true;
   try {
     await authService.login(form.email, form.password);
-    router.replace('/dashboard');
+
+    const redirect = route.query.redirect as string;
+
+    if (redirect && redirect.startsWith('/')) {
+      router.push(redirect);
+    } else {
+      router.push('/dashboard');
+    }
+    console.log('redirect:', route.query.redirect);
   } catch (error: any) {
     const message = error.code === 'auth/invalid-credential'
       ? "Correo o contraseña incorrectos."
