@@ -85,6 +85,99 @@ const copyLink = async () => {
     alert('Error al copiar');
   }
 };
+
+const activityTab = ref<'list' | 'calendar'>('list')
+const eventDialog = ref(false)
+const eventFormRef = ref()
+
+const eventForm = ref({
+  nombre: '',
+  tipo: '',
+  fecha: '',
+  horaInicio: '',
+  horaFin: '',
+  precio: null as number | null,
+  lugar: '',
+})
+
+const calendarEvents = computed(() => {
+  return [...eventos.value]
+    .sort((a, b) => a.fechaHoraInicio - b.fechaHoraInicio)
+    .map((ev) => ({
+      title: ev.nombre,
+      start: new Date(ev.fechaHoraInicio),
+      end: new Date(ev.fechaHoraFin),
+      color: 'indigo',
+      allDay: false,
+    }))
+})
+
+const resetEventForm = () => {
+  eventForm.value = {
+    nombre: '',
+    tipo: '',
+    fecha: '',
+    horaInicio: '',
+    horaFin: '',
+    precio: null,
+    lugar: '',
+  }
+}
+
+const combineDateAndTimeToMillis = (dateStr: string, timeStr: string) => {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const [hours, minutes] = timeStr.split(':').map(Number)
+
+  return new Date(year, month - 1, day, hours, minutes, 0, 0).getTime()
+}
+
+const submitEvent = async () => {
+  if (
+    !projectId ||
+    !eventForm.value.nombre ||
+    !eventForm.value.tipo ||
+    !eventForm.value.fecha ||
+    !eventForm.value.horaInicio ||
+    !eventForm.value.horaFin
+  ) {
+    alert('Completa los campos obligatorios')
+    return
+  }
+
+  const fechaHoraInicio = combineDateAndTimeToMillis(
+    eventForm.value.fecha,
+    eventForm.value.horaInicio,
+  )
+
+  const fechaHoraFin = combineDateAndTimeToMillis(
+    eventForm.value.fecha,
+    eventForm.value.horaFin,
+  )
+
+  if (fechaHoraFin <= fechaHoraInicio) {
+    alert('La hora de fin debe ser posterior a la hora de inicio')
+    return
+  }
+
+  const newEvent: Evento = {
+    nombre: eventForm.value.nombre,
+    tipo: eventForm.value.tipo,
+    fechaHoraInicio,
+    fechaHoraFin,
+    precio: eventForm.value.precio ?? undefined,
+    lugar: eventForm.value.lugar || undefined,
+    gastos: [],
+  }
+
+  try {
+    await projectService.addEventToProject(projectId, newEvent)
+    eventDialog.value = false
+    resetEventForm()
+  } catch (e) {
+    console.error('Error creando evento:', e)
+    alert('No se pudo crear el evento')
+  }
+}
 </script>
 
 <template>
@@ -140,23 +233,182 @@ const copyLink = async () => {
             </v-card>
 
             <v-card class="custom-card card-container mb-6">
-              <v-card-title class="pa-6 font-weight-bold">Actividades</v-card-title>
+              <v-card-title class="pa-6 font-weight-bold d-flex justify-space-between align-center">
+                <span>Actividades</span>
+
+                <v-btn
+                  color="indigo"
+                  rounded="xl"
+                  elevation="0"
+                  prepend-icon="mdi-plus"
+                  @click="eventDialog = true"
+                >
+                  Nuevo evento
+                </v-btn>
+              </v-card-title>
+
               <v-card-text class="pa-6 pt-0">
-                <v-timeline side="end" align="start" density="compact" v-if="eventos.length">
-                  <v-timeline-item v-for="(ev, i) in eventos" :key="i" dot-color="indigo-lighten-4" size="x-small">
-                    <div class="d-flex justify-space-between">
-                      <span class="text-caption font-weight-bold text-indigo">{{ formatHora(ev.fechaHoraInicio) }}</span>
-                      <span class="text-caption font-weight-bold text-indigo">{{ formatHora(ev.fechaHoraFin) }}</span>
-                      <div class="flex-grow-1 ml-4">
-                        <div class="text-body-2 font-weight-bold">{{ ev.nombre }}</div>
-                        <div class="text-caption text-grey">{{ ev.tipo }}</div>
-                      </div>
+                <v-tabs v-model="activityTab" color="indigo" grow>
+                  <v-tab value="list">Lista</v-tab>
+                  <v-tab value="calendar">Calendario</v-tab>
+                </v-tabs>
+
+                <v-window v-model="activityTab" class="mt-4">
+                  <v-window-item value="list">
+                    <v-timeline side="end" align="start" density="compact" v-if="eventos.length">
+                      <v-timeline-item
+                        v-for="(ev, i) in eventos"
+                        :key="i"
+                        dot-color="indigo-lighten-4"
+                        size="x-small"
+                      >
+                        <div class="d-flex justify-space-between">
+                          <span class="text-caption font-weight-bold text-indigo">
+                            {{ formatHora(ev.fechaHoraInicio) }}
+                          </span>
+                          --
+                          <span class="text-caption font-weight-bold text-indigo">
+                            {{ formatHora(ev.fechaHoraFin) }}
+                          </span><br>
+
+                          <div class="flex-grow-1 ml-4">
+                            <br>
+                            <div class="text-body-2 font-weight-bold">{{ ev.nombre }}</div>
+                            <div class="text-caption text-grey">{{ ev.tipo }}</div>
+
+                            <div v-if="ev.lugar" class="text-caption text-grey-darken-1">
+                              Lugar: {{ ev.lugar }}
+                            </div>
+
+                            <div v-if="ev.precio != null" class="text-caption text-grey-darken-1">
+                              Precio: ${{ ev.precio }}
+                            </div>
+                          </div>
+                        </div>
+                      </v-timeline-item>
+                    </v-timeline>
+
+                    <div v-else class="text-center py-4 text-grey">
+                      No hay actividades programadas
                     </div>
-                  </v-timeline-item>
-                </v-timeline>
-                <div v-else class="text-center py-4 text-grey">No hay actividades programadas</div>
+                  </v-window-item>
+
+                  <v-window-item value="calendar">
+                    <div v-if="calendarEvents.length" class="mt-2">
+                      <v-calendar
+                        view-mode="month"
+                        :events="calendarEvents"
+                      />
+                    </div>
+
+                    <div v-else class="text-center py-4 text-grey">
+                      No hay actividades para mostrar en el calendario
+                    </div>
+                  </v-window-item>
+                </v-window>
               </v-card-text>
             </v-card>
+
+            <v-dialog v-model="eventDialog" max-width="640">
+              <v-card class="custom-card">
+                <v-card-title class="pa-6 font-weight-bold">
+                  Crear evento
+                </v-card-title>
+
+                <v-card-text class="px-6 pb-2">
+                  <v-form ref="eventFormRef">
+                    <v-row>
+                      <v-col cols="12" md="6">
+                        <v-text-field
+                          v-model="eventForm.nombre"
+                          label="Nombre"
+                          variant="outlined"
+                          required
+                        />
+                      </v-col>
+
+                      <v-col cols="12" md="6">
+                        <v-text-field
+                          v-model="eventForm.tipo"
+                          label="Tipo"
+                          variant="outlined"
+                          required
+                        />
+                      </v-col>
+
+                      <v-col cols="12" md="4">
+                        <v-text-field
+                          v-model="eventForm.fecha"
+                          label="Fecha"
+                          type="date"
+                          variant="outlined"
+                          required
+                        />
+                      </v-col>
+
+                      <v-col cols="12" md="4">
+                        <v-text-field
+                          v-model="eventForm.horaInicio"
+                          label="Hora inicio"
+                          type="time"
+                          variant="outlined"
+                          required
+                        />
+                      </v-col>
+
+                      <v-col cols="12" md="4">
+                        <v-text-field
+                          v-model="eventForm.horaFin"
+                          label="Hora fin"
+                          type="time"
+                          variant="outlined"
+                          required
+                        />
+                      </v-col>
+
+                      <v-col cols="12" md="6">
+                        <v-text-field
+                          v-model.number="eventForm.precio"
+                          label="Precio"
+                          type="number"
+                          min="0"
+                          variant="outlined"
+                        />
+                      </v-col>
+
+                      <v-col cols="12" md="6">
+                        <v-text-field
+                          v-model="eventForm.lugar"
+                          label="Lugar"
+                          variant="outlined"
+                        />
+                      </v-col>
+                    </v-row>
+                  </v-form>
+                </v-card-text>
+
+                <v-card-actions class="px-6 pb-6">
+                  <v-spacer />
+
+                  <v-btn
+                    variant="outlined"
+                    rounded="xl"
+                    @click="eventDialog = false"
+                  >
+                    Cancelar
+                  </v-btn>
+
+                  <v-btn
+                    color="indigo"
+                    rounded="xl"
+                    elevation="0"
+                    @click="submitEvent"
+                  >
+                    Guardar evento
+                  </v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-dialog>
           </v-col>
 
           <v-col cols="12" md="4" class="card-container">
