@@ -7,12 +7,14 @@ import type { Proyecto, Evento, Usuario } from '@/interfaces/models';
 // Layout components
 import NavBar from '@/components/testing/NavBar.vue';
 import TheFooter from '@/components/testing/TheFooter.vue';
+import EventModal from '@/components/EventModal.vue';
+import ShareProjectDialog from '@/components/ShareModal.vue';
 
 const route = useRoute();
 const router = useRouter();
 const projectId = route.params.id as string;
 
-const dialog = ref(false);
+const showShareModal = ref(false);
 const shareLink = computed(() => {
   return `${window.location.origin}/share/${projectId}`;
 });
@@ -75,16 +77,6 @@ onUnmounted(() => {
 
 // Formateadores
 const formatHora = (ts?: number) => ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
-
-//Copy al portapapeles de modal de share
-const copyLink = async () => {
-  try {
-    await navigator.clipboard.writeText(shareLink.value);
-    alert('Link copiado ✅');
-  } catch (e) {
-    alert('Error al copiar');
-  }
-};
 
 const activityTab = ref<'list' | 'calendar'>('list')
 const eventDialog = ref(false)
@@ -178,6 +170,41 @@ const submitEvent = async () => {
     alert('No se pudo crear el evento')
   }
 }
+//Abrir modal de edición de evento
+  const showEventModal = ref(false);
+  const eventoSeleccionado = ref<Evento | null>(null);
+
+  const openModal = (evento: Evento) => {
+    eventoSeleccionado.value = evento;
+    showEventModal.value = true;
+    console.log(evento.nombre)
+  };
+
+const saveEventEdited = async (event: Evento) => {
+  console.log('Evento editado:', event.id);
+  try {
+    await projectService.updateEvent(projectId, event);
+    showEventModal.value = false;
+  } catch (e) {
+    console.error('Error de edición evento:', e);
+    alert('No se pudo editar el evento');
+  }
+};
+
+const deleteEvent = async (event: Evento) => {
+  if (!confirm(`¿Eliminar evento "${event.nombre}"?`)) return;
+
+  try {
+    if (!projectId || !event.id) {
+      alert('ID de proyecto o evento no válido');
+      return;
+    }
+    await projectService.deleteEvent(projectId, event.id);
+  } catch (e) {
+    console.error('Error eliminando evento:', e);
+    alert('No se pudo eliminar el evento');
+  }
+};
 </script>
 
 <template>
@@ -203,7 +230,7 @@ const submitEvent = async () => {
               color="#4caf50"
               prepend-icon="mdi-export-variant"
               variant="flat"
-              @click="dialog = true"
+              @click="showShareModal = true"
             >
               Share
             </v-btn>
@@ -262,28 +289,48 @@ const submitEvent = async () => {
                         dot-color="indigo-lighten-4"
                         size="x-small"
                       >
-                        <div class="d-flex justify-space-between">
-                          <span class="text-caption font-weight-bold text-indigo">
-                            {{ formatHora(ev.fechaHoraInicio) }}
-                          </span>
-                          --
-                          <span class="text-caption font-weight-bold text-indigo">
-                            {{ formatHora(ev.fechaHoraFin) }}
-                          </span><br>
+                        <div class="d-flex align-start">
+
+                          <div class="d-flex flex-column" style="min-width: 80px">
+                            <span class="text-caption font-weight-bold text-indigo">
+                              {{ formatHora(ev.fechaHoraInicio) }}
+                            </span>
+                            <span class="text-caption text-grey-lighten-1">|</span>
+                            <span class="text-caption font-weight-bold text-indigo">
+                              {{ formatHora(ev.fechaHoraFin) }}
+                            </span>
+                          </div>
 
                           <div class="flex-grow-1 ml-4">
-                            <br>
                             <div class="text-body-2 font-weight-bold">{{ ev.nombre }}</div>
                             <div class="text-caption text-grey">{{ ev.tipo }}</div>
 
                             <div v-if="ev.lugar" class="text-caption text-grey-darken-1">
-                              Lugar: {{ ev.lugar }}
+                              <v-icon size="x-small" icon="mdi-map-marker" /> {{ ev.lugar }}
                             </div>
 
                             <div v-if="ev.precio != null" class="text-caption text-grey-darken-1">
-                              Precio: ${{ ev.precio }}
+                              <v-icon size="x-small" icon="mdi-currency-usd" /> {{ ev.precio }}
                             </div>
                           </div>
+
+                          <div class="align-self-center">
+                            <v-btn
+                              icon="mdi-pencil"
+                              variant="text"
+                              size="small"
+                              color="grey-darken-1"
+                              @click="openModal(ev)"
+                            />
+                            <v-btn
+                              icon="mdi-delete"
+                              variant="text"
+                              color="error"
+                              size="small"
+                              @click="deleteEvent(ev)"
+                            ></v-btn>
+                          </div>
+
                         </div>
                       </v-timeline-item>
                     </v-timeline>
@@ -442,41 +489,16 @@ const submitEvent = async () => {
     </v-main>
     <TheFooter />
   </v-app>
-  <v-dialog v-model="dialog" max-width="500">
-  <v-card class="custom-card card-container mb-6">
-
-    <v-card-title class="pa-6 text-subtitle-1 font-weight-bold">
-      Compartir proyecto
-    </v-card-title>
-
-    <v-card-text>
-      <p>Copia este enlace para compartir:</p>
-
-      <v-text-field
-        v-model="shareLink"
-        readonly
-        append-inner-icon="mdi-content-copy"
-        @click:append-inner="copyLink"
-      />
-    </v-card-text>
-
-    <v-card-actions>
-      <v-spacer></v-spacer>
-      <v-btn
-            class="text-none"
-            color="grey"
-            min-width="92"
-            variant="outlined"
-            rounded
-            text @click="dialog = false"
-          >
-            Cerrar
-      </v-btn>
-
-    </v-card-actions>
-
-  </v-card>
-</v-dialog>
+  <EventModal
+    :visible="showEventModal"
+    :evento="eventoSeleccionado"
+    @close="showEventModal = false"
+    @save="saveEventEdited"
+  />
+  <ShareProjectDialog
+    v-model="showShareModal"
+    :share-link="shareLink"
+  />
 </template>
 
 <style scoped>

@@ -1,7 +1,7 @@
 import { auth, db } from '@/services/remote/firebase/config';
 import {
   collection, doc, addDoc, getDoc, getDocs, query, where,
-  deleteDoc,
+  deleteDoc, updateDoc,
   type Unsubscribe,
   onSnapshot
 } from 'firebase/firestore';
@@ -74,6 +74,36 @@ export const projectService = {
     } as Evento));
   },
 
+  async updateEvent(projectId:string, event:Evento): Promise<boolean> {
+    try {
+    if (!event.id) throw new Error('ID requerido');
+
+    const { id, ...data } = event;
+
+    const ref = doc(db, `proyectos/${projectId}/eventos/${id}`);
+
+    await updateDoc(ref, data);
+
+    return true;
+
+  } catch (error) {
+    console.error('Error actualizando evento:', error);
+    return false;
+  }
+  },
+
+  async deleteEvent(projectId:string, eventId:string): Promise<boolean> {
+    try {
+      const ref = doc(db, `proyectos/${projectId}/eventos/${eventId}`);
+      await deleteDoc(ref);
+      return true;
+    } catch (error) {
+      console.error('Error eliminando evento:', error);
+      return false;
+    }
+  },
+
+
   async getProjectsByUser(userId: string): Promise<Proyecto[]> {
     const relationRef = collection(db, 'proyecto_usuario');
     const q = query(relationRef, where('userId', '==', userId));
@@ -128,6 +158,7 @@ export const projectService = {
 
     return onSnapshot(eventsRef, (snap) => {
       const events = snap.docs.map(doc => ({
+        id: doc.id,
         ...doc.data(),
         // Si necesitas el ID del evento, podrías añadirlo aquí
       } as Evento));

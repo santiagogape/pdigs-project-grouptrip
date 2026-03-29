@@ -13,6 +13,7 @@ export interface Gasto {
 
 // --- Modelo de Eventos (Anidado en Proyecto) ---
 export interface Evento {
+  id?: string;
   nombre: string;
   tipo: string;
   fechaHoraInicio: number; // Millis
