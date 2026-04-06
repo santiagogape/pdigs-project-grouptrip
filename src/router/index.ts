@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '@/views/HomeView.vue'
 import TestFirebase from '@/views/TestFirebase.vue'
 import { auth } from '@/services/remote/firebase/config';
 
