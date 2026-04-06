@@ -19,11 +19,11 @@ const topSurfaces = [1, 2, 3]
     <section class="footer-cta">
       <div class="footer-cta-inner">
         <h2 class="cta-title">Listo para tu próxima aventura?</h2>
-        <p class="cta-text">sdhsjk dskjhd sjdhjs aldjas akdksa sdk sldk ldskdls klddsj</p>
+        <p class="cta-text">Organiza viajes en grupo, comparte gastos y crea recuerdos inolvidables con quienes más quieres.</p>
 
         <RouterLink to="#" class="cta-link">
           <v-btn class="cta-btn" rounded="lg" elevation="0" size="x-large">
-            Comenza ahora
+            Comienza ahora
             <v-icon end>mdi-arrow-right</v-icon>
           </v-btn>
         </RouterLink>

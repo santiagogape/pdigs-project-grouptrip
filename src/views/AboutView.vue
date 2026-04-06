@@ -18,7 +18,7 @@ const features = [
       <section class="hero-section">
         <v-container class="top-container">
           <v-row align="center" class="min-vh-70">
-            <v-col cols="12" md="6" class="pa-8">
+            <v-col cols="12" md="6" class="left-top-container pa-8">
               <v-chip color="black" theme="dark" class="mb-4 font-weight-bold px-4" label>
                 ✨ NUEVA ERA DE VIAJES
               </v-chip>
@@ -41,31 +41,8 @@ const features = [
                   Comienza gratis
                   <v-icon end>mdi-arrow-right</v-icon>
                 </v-btn>
-
-                <v-btn
-                  variant="outlined"
-                  size="x-large"
-                  class="brutalist-btn-outline font-weight-black"
-                  to="/about"
-                >
-                  Ver demo
-                </v-btn>
               </div>
 
-              <div class="stats-row mt-10">
-                <div class="stat-item">
-                  <span class="stat-value">50K+</span>
-                  <span class="stat-label">Viajeros activos</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-value">4.9/5</span>
-                  <span class="stat-label">Valoración media</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-value">24/7</span>
-                  <span class="stat-label">Soporte del equipo</span>
-                </div>
-              </div>
             </v-col>
 
             <v-col cols="12" md="6" class="d-flex justify-center relative">
@@ -76,10 +53,6 @@ const features = [
                   cover
                   class="hero-img border-black shadow-brutal"
                 />
-                <div class="floating-card border-black">
-                  <v-icon color="success">mdi-check-circle</v-icon>
-                  <span>¡Itinerario listo!</span>
-                </div>
               </div>
             </v-col>
           </v-row>
@@ -90,7 +63,6 @@ const features = [
         <v-container>
           <div class="text-center mb-16">
             <h2 class="section-title text-uppercase mb-4">Todo lo que necesitas</h2>
-            <div class="divider-center"></div>
           </div>
 
           <v-row>
@@ -120,7 +92,7 @@ const features = [
       </section>
 
       <section class="collab-section py-16">
-        <v-container>
+        <v-container class="mid-container">
           <v-row align="center">
             <v-col cols="12" md="6">
               <v-card class="border-black shadow-brutal overflow-hidden">
@@ -189,6 +161,9 @@ const features = [
   font-family: 'Manrope', sans-serif;
 }
 
+.display-title {
+  margin-bottom: 2.5rem;
+}
 /* HERO */
 .hero-section {
   background:
@@ -197,7 +172,7 @@ const features = [
   border-bottom: 2px solid #000;
 }
 
-.min-vh-70 { min-height: 75vh; }
+.min-vh-70 { min-height: 65vh; }
 
 .text-highlight {
   color: var(--color-orange);
@@ -210,6 +185,7 @@ const features = [
   font-size: 1.25rem;
   line-height: 1.6;
   max-width: 500px;
+  margin-bottom: 1.5rem;
   color: #2f2f2f;
 }
 
@@ -281,6 +257,23 @@ const features = [
   font-weight: 900;
   box-shadow: 8px 8px 0px #000;
   z-index: 2;
+}
+
+.features-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mid-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  color: #000;
+}
+
+.cta-banner {
+  display: flex;
+  justify-content: center;
 }
 
 /* BOTONES BRUTALISTAS */
@@ -408,6 +401,10 @@ const features = [
   background: var(--color-orange);
   margin: 0 auto;
   border: 2px solid #000;
+}
+
+.v-btn {
+  padding: 1rem;
 }
 
 /* GAP */
