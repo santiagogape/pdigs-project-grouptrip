@@ -156,8 +156,8 @@ const submitEvent = async () => {
     tipo: eventForm.value.tipo,
     fechaHoraInicio,
     fechaHoraFin,
-    precio: eventForm.value.precio ?? undefined,
-    lugar: eventForm.value.lugar || undefined,
+    precio: eventForm.value.precio ?? null,
+    lugar: eventForm.value.lugar || null,
     gastos: [],
   }
 
