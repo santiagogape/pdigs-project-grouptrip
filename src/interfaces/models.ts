@@ -18,8 +18,8 @@ export interface Evento {
   tipo: string;
   fechaHoraInicio: number; // Millis
   fechaHoraFin: number;    // Millis
-  precio?: number;         // Opcional
-  lugar?: string;          // Opcional (XYZ)
+  precio?: number | null;         // Opcional
+  lugar?: string | null;          // Opcional (XYZ)
   gastos: Gasto[];
 }
 
