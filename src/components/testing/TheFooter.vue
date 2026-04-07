@@ -1,5 +1,9 @@
 <script setup lang="ts">
-const topSurfaces = [1, 2, 3]
+const topSurfaces = [
+  { id: 1, src: '/src/assets/icons/icons8-calendar-100.png', alt: 'calendar' },
+  { id: 2, src: '/src/assets/icons/icons8-grupos-de-usuarios-100.png', alt: 'grupos de usuario' },
+  { id: 3, src: '/src/assets/icons/icons8-place-marker-100.png', alt: 'marcador de sitio' },
+]
 </script>
 
 <template>
@@ -8,11 +12,15 @@ const topSurfaces = [1, 2, 3]
       <div class="footer-top-inner">
         <v-sheet
           v-for="item in topSurfaces"
-          :key="item"
+          :key="item.id"
           class="image-surface"
-          rounded="0"
-          elevation="0"
-        />
+        >
+          <img
+            :src="item.src"
+            :alt="item.alt"
+            class="footer-icon"
+          />
+        </v-sheet>
       </div>
     </section>
 
@@ -22,7 +30,7 @@ const topSurfaces = [1, 2, 3]
         <p class="cta-text">Organiza viajes en grupo, comparte gastos y crea recuerdos inolvidables con quienes más quieres.</p>
 
         <RouterLink to="#" class="cta-link">
-          <v-btn class="cta-btn" rounded="lg" elevation="0" size="x-large">
+          <v-btn class="cta-btn text-white" rounded="lg" elevation="0" size="x-large">
             Comienza ahora
             <v-icon end>mdi-arrow-right</v-icon>
           </v-btn>
@@ -66,7 +74,7 @@ const topSurfaces = [1, 2, 3]
 .image-surface {
   width: 74px;
   height: 50px;
-  background-color: rgba(0, 0, 0, 0.12);
+  background-color: transparent;
 }
 
 .footer-cta {
@@ -125,6 +133,11 @@ const topSurfaces = [1, 2, 3]
   padding: 2rem 3rem;
   display: flex;
   align-items: center;
+}
+.footer-icon {
+  width: 2rem;
+  height: auto;
+  display: block;
 }
 
 @media (max-width: 760px) {
