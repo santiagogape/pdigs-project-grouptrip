@@ -292,8 +292,8 @@ const submitEvent = async () => {
     tipo: eventForm.value.tipo,
     fechaHoraInicio,
     fechaHoraFin,
-    precio: eventForm.value.precio ?? undefined,
-    lugar: eventForm.value.lugar || undefined,
+    precio: eventForm.value.precio ?? null,
+    lugar: eventForm.value.lugar || null,
     gastos: [],
   }
 
@@ -438,14 +438,15 @@ const deleteEvent = async (event: Evento) => {
 
                 <v-window v-model="activityTab" class="mt-4">
                   <v-window-item value="list">
-                    <v-timeline side="end" align="start" density="compact" v-if="eventos.length">
+                    <v-timeline class="actividades-timeline" side="end" align="start" density="compact" v-if="eventos.length">
                       <v-timeline-item
                         v-for="(ev, i) in eventos"
                         :key="i"
                         dot-color="indigo-lighten-4"
                         size="x-small"
+                        style="width: 100%;"
                       >
-                        <div class="d-flex align-start">
+                        <div class="d-flex align-start w-100">
 
                           <div class="d-flex flex-column" style="min-width: 80px">
                             <span class="text-caption font-weight-bold text-indigo">
@@ -470,7 +471,7 @@ const deleteEvent = async (event: Evento) => {
                             </div>
                           </div>
 
-                          <div class="align-self-center">
+                          <div class="align-self-end ml-auto d-flex">
                             <v-btn
                               icon="mdi-pencil"
                               variant="text"
@@ -484,12 +485,13 @@ const deleteEvent = async (event: Evento) => {
                               color="error"
                               size="small"
                               @click="deleteEvent(ev)"
-                            ></v-btn>
+                            />
                           </div>
 
                         </div>
                       </v-timeline-item>
                     </v-timeline>
+
 
                     <div v-else class="text-center py-4 text-grey">
                       No hay actividades programadas
@@ -718,5 +720,43 @@ const deleteEvent = async (event: Evento) => {
 /* Sombras suaves */
 .shadow-sm {
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.actividades-timeline .v-timeline-item__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100% !important;
+}
+:deep(.v-timeline-item__body) {
+  width: 100% !important;
+}
+
+.actividades-timeline .v-timeline-item__body > div {
+  width: 100%;
+}
+
+.actividades-timeline .v-timeline-item__body .evento-row {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  gap: 16px;
+}
+
+.actividades-timeline .hora-col {
+  min-width: 80px;
+  display: flex;
+  flex-direction: column;
+}
+
+.actividades-timeline .contenido-col {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.actividades-timeline .acciones-col {
+  margin-left: auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
 }
 </style>
