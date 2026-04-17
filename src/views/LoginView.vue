@@ -24,8 +24,10 @@ const handleLogin = async () => {
     await authService.login(form.email, form.password);
 
     const redirect = route.query.redirect as string;
+    const projectId = redirect ? redirect.split('/').pop() : null;
 
     if (redirect && redirect.startsWith('/')) {
+      console.log('redirect before:', redirect);
       router.push(redirect);
     } else {
       router.push('/dashboard');

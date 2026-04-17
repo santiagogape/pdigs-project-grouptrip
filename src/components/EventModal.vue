@@ -70,7 +70,7 @@ watch(
   },
   { immediate: true }
 );
-console.log(props.evento?.id);
+console.log("evento recibido:", props.evento?.id);
 
 const rules = {
   required: (v: any) => !!v || 'Campo obligatorio',

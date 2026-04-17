@@ -25,6 +25,14 @@ export const projectService = {
     return null;
   },
 
+  async addUserToProject(projectId: string, userId: string): Promise<void> {
+  const relation: ProyectoUsuario = {
+    projectId,
+    userId
+  };
+
+  await addDoc(collection(db, 'proyecto_usuario'), relation);
+  },
   async createProject(projectData: Omit<Proyecto, 'projectId'>): Promise<string> {
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error("Debes estar logueado");

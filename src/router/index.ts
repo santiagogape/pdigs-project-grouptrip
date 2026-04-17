@@ -45,7 +45,7 @@ const router = createRouter({
       component: () => import('@/views/DashboardView.vue'),
     },
     {
-      path: '/share/:id',
+      path: '/share/:token',
       name: 'Share',
       meta: { requiresAuth: true },
       component: () => import('@/views/SharePage.vue'),
