@@ -40,3 +40,5 @@ __screenshots__/
 
 #Firebase config
 src/services/remote/firebase/config.ts
+
+.env

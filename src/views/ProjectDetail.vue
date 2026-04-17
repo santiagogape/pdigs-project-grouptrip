@@ -3,6 +3,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { projectService } from '@/services/remote/firebase/projectService';
 import type { Proyecto, Evento, Usuario } from '@/interfaces/models';
+import openAIService from '@/services/remote/openAI/openAIService';
 
 // Layout components
 import NavBar from '@/components/testing/NavBar.vue';
@@ -15,6 +16,8 @@ const router = useRouter();
 const projectId = route.params.id as string;
 
 const showShareModal = ref(false);
+const isInitializingTrip = ref(false);
+const initializationError = ref('');
 const shareLink = computed(() => {
   return `${window.location.origin}/share/${projectId}`;
 });
@@ -117,10 +120,143 @@ const resetEventForm = () => {
 }
 
 const combineDateAndTimeToMillis = (dateStr: string, timeStr: string) => {
-  const [year, month, day] = dateStr.split('-').map(Number)
-  const [hours, minutes] = timeStr.split(':').map(Number)
+  const [yearStr, monthStr, dayStr] = dateStr.split('-')
+  const [hoursStr, minutesStr] = timeStr.split(':')
+
+  const year = Number(yearStr)
+  const month = Number(monthStr)
+  const day = Number(dayStr)
+  const hours = Number(hoursStr)
+  const minutes = Number(minutesStr)
+
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes)
+  ) {
+    throw new Error('Fecha u hora inválida')
+  }
 
   return new Date(year, month - 1, day, hours, minutes, 0, 0).getTime()
+}
+
+const parseIsoDateTimeToMillis = (value: string) => {
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime()
+}
+
+const clampMillis = (value: number, min: number, max: number) => {
+  return Math.min(max, Math.max(min, value))
+}
+
+const createFallbackEventFromSuggestion = (
+  suggestion: { nombre: string; tipo: string; precio?: number; lugar?: string },
+  index: number,
+  total: number,
+  projectStart: number,
+  projectEnd: number
+): Evento => {
+  const tripDuration = Math.max(projectEnd - projectStart, 60 * 60 * 1000)
+  const eventDuration = Math.min(3 * 60 * 60 * 1000, Math.max(60 * 60 * 1000, Math.floor(tripDuration / Math.max(total, 1) / 2)))
+  const usableSpan = Math.max(0, tripDuration - eventDuration)
+  const offset = total <= 1 ? usableSpan / 2 : (usableSpan * index) / (total - 1)
+  const startMillis = clampMillis(Math.round(projectStart + offset), projectStart, Math.max(projectStart, projectEnd - eventDuration))
+  const endMillis = clampMillis(startMillis + eventDuration, startMillis + 15 * 60 * 1000, projectEnd)
+
+  return {
+    nombre: suggestion.nombre,
+    tipo: suggestion.tipo,
+    fechaHoraInicio: startMillis,
+    fechaHoraFin: Math.max(endMillis, startMillis + 15 * 60 * 1000),
+    precio: suggestion.precio,
+    lugar: suggestion.lugar,
+    gastos: []
+  }
+}
+
+const normalizeSuggestedEvent = (
+  suggestion: { nombre: string; tipo: string; fechaHoraInicio: string; fechaHoraFin: string; precio?: number; lugar?: string },
+  index: number,
+  total: number,
+  projectStart: number,
+  projectEnd: number
+): Evento => {
+  const startMillis = parseIsoDateTimeToMillis(suggestion.fechaHoraInicio)
+  const endMillis = parseIsoDateTimeToMillis(suggestion.fechaHoraFin)
+
+  if (startMillis === null || endMillis === null || endMillis <= startMillis) {
+    return createFallbackEventFromSuggestion(suggestion, index, total, projectStart, projectEnd)
+  }
+
+  const safeStart = clampMillis(startMillis, projectStart, projectEnd)
+  const originalDuration = Math.max(15 * 60 * 1000, endMillis - startMillis)
+  const safeEnd = clampMillis(safeStart + originalDuration, safeStart + 15 * 60 * 1000, projectEnd)
+
+  if (safeEnd <= safeStart) {
+    return createFallbackEventFromSuggestion(suggestion, index, total, projectStart, projectEnd)
+  }
+
+  return {
+    nombre: suggestion.nombre,
+    tipo: suggestion.tipo,
+    fechaHoraInicio: safeStart,
+    fechaHoraFin: safeEnd,
+    precio: suggestion.precio,
+    lugar: suggestion.lugar,
+    gastos: []
+  }
+}
+
+const initializeTripWithAI = async () => {
+  if (!proyecto.value || !projectId) {
+    return
+  }
+
+  if (eventos.value.length > 0 && !confirm('Ya existen eventos en este viaje. ¿Quieres agregar también sugerencias iniciales generadas por IA?')) {
+    return
+  }
+
+  isInitializingTrip.value = true
+  initializationError.value = ''
+
+  try {
+    const suggestions = await openAIService.generateInitialProjectEvents({
+      nombre: proyecto.value.destino,
+      destino: proyecto.value.destino,
+      descripcion: proyecto.value.descripcion,
+      presupuesto: proyecto.value.presupuesto,
+      fechaInicio: proyecto.value.fechaInicio,
+      fechaFin: proyecto.value.fechaFin
+    })
+
+    if (!suggestions.length) {
+      initializationError.value = 'La IA no devolvió eventos válidos para inicializar el viaje.'
+      return
+    }
+
+    const projectStart = proyecto.value.fechaInicio
+    const projectEnd = proyecto.value.fechaFin
+
+    const eventsToCreate = suggestions.map((suggestion, index) =>
+      normalizeSuggestedEvent(suggestion, index, suggestions.length, projectStart, projectEnd)
+    )
+
+    if (!eventsToCreate.length) {
+      initializationError.value = 'La IA no devolvió eventos utilizables para inicializar el viaje.'
+      return
+    }
+
+    for (const event of eventsToCreate) {
+      await projectService.addEventToProject(projectId, event)
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    initializationError.value = `No se pudieron generar eventos iniciales: ${message}`
+  } finally {
+    isInitializingTrip.value = false
+  }
 }
 
 const submitEvent = async () => {
@@ -263,16 +399,36 @@ const deleteEvent = async (event: Evento) => {
               <v-card-title class="pa-6 font-weight-bold d-flex justify-space-between align-center">
                 <span>Actividades</span>
 
-                <v-btn
-                  color="indigo"
-                  rounded="xl"
-                  elevation="0"
-                  prepend-icon="mdi-plus"
-                  @click="eventDialog = true"
-                >
-                  Nuevo evento
-                </v-btn>
+                <div class="d-flex ga-2">
+                  <v-btn
+                    color="grey-darken-2"
+                    variant="tonal"
+                    rounded="xl"
+                    elevation="0"
+                    prepend-icon="mdi-auto-fix"
+                    :loading="isInitializingTrip"
+                    @click="initializeTripWithAI"
+                  >
+                    Inicializar con IA
+                  </v-btn>
+
+                  <v-btn
+                    color="indigo"
+                    rounded="xl"
+                    elevation="0"
+                    prepend-icon="mdi-plus"
+                    @click="eventDialog = true"
+                  >
+                    Nuevo evento
+                  </v-btn>
+                </div>
               </v-card-title>
+
+              <v-card-text v-if="initializationError" class="px-6 pb-0">
+                <v-alert type="warning" variant="tonal" density="compact">
+                  {{ initializationError }}
+                </v-alert>
+              </v-card-text>
 
               <v-card-text class="pa-6 pt-0">
                 <v-tabs v-model="activityTab" color="indigo" grow>
