@@ -25,14 +25,6 @@ export const projectService = {
     return null;
   },
 
-  async addUserToProject(projectId: string, userId: string): Promise<void> {
-  const relation: ProyectoUsuario = {
-    projectId,
-    userId
-  };
-
-  await addDoc(collection(db, 'proyecto_usuario'), relation);
-  },
   async createProject(projectData: Omit<Proyecto, 'projectId'>): Promise<string> {
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error("Debes estar logueado");
@@ -55,8 +47,7 @@ export const projectService = {
 
   async addEventToProject(projectId: string, eventData: Evento): Promise<void> {
     const eventsRef = collection(db, 'proyectos', projectId, 'eventos');
-    // Usamos spread para asegurarnos de que pasamos un objeto limpio
-    await addDoc(eventsRef, { ...eventData });
+    await addDoc(eventsRef, this.stripUndefinedValues({ ...eventData }));
   },
 
   async getProject(projectId: string): Promise<Proyecto | null> {
@@ -90,7 +81,7 @@ export const projectService = {
 
     const ref = doc(db, `proyectos/${projectId}/eventos/${id}`);
 
-    await updateDoc(ref, data);
+    await updateDoc(ref, this.stripUndefinedValues(data));
 
     return true;
 
@@ -172,5 +163,13 @@ export const projectService = {
       } as Evento));
       callback(events);
     });
+  }
+
+  ,
+
+  stripUndefinedValues<T extends Record<string, unknown>>(data: T): Partial<T> {
+    return Object.fromEntries(
+      Object.entries(data).filter(([, value]) => value !== undefined)
+    ) as Partial<T>;
   }
 };

@@ -39,9 +39,8 @@ const createProject = async () => {
       ...data,
       urlPortada: 'https://picsum.photos/200',
       fechaInicio: Date.now(),
-      fechaFin: Date.now() + 1000000,
-      owner: ''
-    }, ownerId);
+      fechaFin: Date.now() + 1000000
+    });
     activeProjectId.value = id;
     startSubscriptions(id);
     addLog(`Proyecto creado: ${id}`);
