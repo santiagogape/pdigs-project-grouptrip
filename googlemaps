@@ -1,0 +1,3 @@
+
+npm install @fawmi/vue-google-maps
+npm install @googlemaps/js-api-loader@1.16.8

@@ -19,7 +19,9 @@ export interface Evento {
   fechaHoraInicio: number; // Millis
   fechaHoraFin: number;    // Millis
   precio?: number | null;         // Opcional
-  lugar?: string | null;          // Opcional (XYZ)
+  lugar?: string | null;          // nombre del lugar
+  lat?: number | null;
+  lng?: number | null;
   gastos: Gasto[];
 }
 

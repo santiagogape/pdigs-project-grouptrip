@@ -9,7 +9,8 @@ import NavBar from '@/components/testing/NavBar.vue';
 import TheFooter from '@/components/testing/TheFooter.vue';
 import EventModal from '@/components/EventModal.vue';
 import ShareProjectDialog from '@/components/ShareModal.vue';
-
+import LocationPicker from '@/components/LocationPicker.vue';
+import EventsMapPanel from '@/components/EventsMapPanel.vue';
 const route = useRoute();
 const router = useRouter();
 const projectId = route.params.id as string;
@@ -45,6 +46,8 @@ const cargarMiembros = async () => {
   } catch (e) {
     console.error("Error cargando miembros:", e);
   }
+
+
 };
 
 onMounted(async () => {
@@ -78,7 +81,7 @@ onUnmounted(() => {
 // Formateadores
 const formatHora = (ts?: number) => ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--';
 
-const activityTab = ref<'list' | 'calendar'>('list')
+const activityTab = ref<'list' | 'calendar' | 'map'>('list')
 const eventDialog = ref(false)
 const eventFormRef = ref()
 
@@ -90,6 +93,8 @@ const eventForm = ref({
   horaFin: '',
   precio: null as number | null,
   lugar: '',
+  lat: null as number | null,
+  lng: null as number | null,
 })
 
 const calendarEvents = computed(() => {
@@ -104,6 +109,13 @@ const calendarEvents = computed(() => {
     }))
 })
 
+// pestaña de mapa para ordenar eventos con ubicación por la hora
+const mapEvents = computed(() => {
+  return [...eventos.value]
+    .filter((ev) => ev.lat != null && ev.lng != null)
+    .sort((a, b) => a.fechaHoraInicio - b.fechaHoraInicio)
+})
+
 const resetEventForm = () => {
   eventForm.value = {
     nombre: '',
@@ -113,6 +125,8 @@ const resetEventForm = () => {
     horaFin: '',
     precio: null,
     lugar: '',
+    lat: null,
+    lng: null,
   }
 }
 
@@ -158,6 +172,8 @@ const submitEvent = async () => {
     fechaHoraFin,
     precio: eventForm.value.precio ?? null,
     lugar: eventForm.value.lugar || null,
+    lat: eventForm.value.lat ?? null,
+    lng: eventForm.value.lng ?? null,
     gastos: [],
   }
 
@@ -205,6 +221,19 @@ const deleteEvent = async (event: Evento) => {
     alert('No se pudo eliminar el evento');
   }
 };
+
+// Lógica para el LocationPicker
+const showLocationPicker = ref(false);
+
+const handleLocationConfirm = (location: { lat: number; lng: number; name?: string }) => {
+  eventForm.value.lugar = location.name || '';
+  eventForm.value.lat = location.lat;
+  eventForm.value.lng = location.lng;
+  console.log('location:', location);
+  showLocationPicker.value = false;
+};
+
+
 </script>
 
 <template>
@@ -278,6 +307,7 @@ const deleteEvent = async (event: Evento) => {
                 <v-tabs v-model="activityTab" color="indigo" grow>
                   <v-tab value="list">Lista</v-tab>
                   <v-tab value="calendar">Calendario</v-tab>
+                  <v-tab value="map">Mapa</v-tab>
                 </v-tabs>
 
                 <v-window v-model="activityTab" class="mt-4">
@@ -352,6 +382,17 @@ const deleteEvent = async (event: Evento) => {
                       No hay actividades para mostrar en el calendario
                     </div>
                   </v-window-item>
+
+                  <v-window-item value="map">
+                    <div v-if="mapEvents.length" class="mt-2">
+                      <EventsMapPanel :events="mapEvents" />
+                    </div>
+
+                    <div v-else class="text-center py-4 text-grey">
+                      No hay actividades con coordenadas para mostrar en el mapa
+                    </div>
+                  </v-window-item>
+
                 </v-window>
               </v-card-text>
             </v-card>
@@ -428,6 +469,8 @@ const deleteEvent = async (event: Evento) => {
                           v-model="eventForm.lugar"
                           label="Lugar"
                           variant="outlined"
+                          append-inner-icon="mdi-map-marker"
+                          @click:append-inner="showLocationPicker = true"
                         />
                       </v-col>
                     </v-row>
@@ -499,6 +542,12 @@ const deleteEvent = async (event: Evento) => {
     v-model="showShareModal"
     :share-link="shareLink"
   />
+  <LocationPicker
+    :isOpen="showLocationPicker"
+    @close="showLocationPicker = false"
+    @confirm="handleLocationConfirm"
+  />
+
 </template>
 
 <style scoped>
@@ -562,5 +611,15 @@ const deleteEvent = async (event: Evento) => {
 /* Sombras suaves */
 .shadow-sm {
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
 }
 </style>
