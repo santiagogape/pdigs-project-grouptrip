@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { geocodePlace } from '@/services/remote/google/geocodeService'
 
 export interface TripFormSuggestion {
   destino: string
@@ -18,6 +19,8 @@ export interface InitialProjectEventSuggestion {
   fechaHoraFin: string
   precio?: number
   lugar?: string
+  lat?: number | null
+  lng?: number | null
 }
 
 export interface GenerateInitialEventsInput {
@@ -28,6 +31,7 @@ export interface GenerateInitialEventsInput {
   fechaInicio: number
   fechaFin: number
 }
+
 
 class OpenAIService {
   private client: OpenAI
@@ -165,6 +169,14 @@ class OpenAIService {
           lugar: typeof record.lugar === 'string' && record.lugar.trim().length > 0 ? record.lugar.trim() : undefined
         })
       }
+
+      for (const event of events) {
+          if (event.lugar) {
+            const coords = await geocodePlace(`${event.lugar}, ${project.destino}`)
+            event.lat = coords?.lat ?? null
+            event.lng = coords?.lng ?? null
+          }
+        }
 
       return events
     } catch (error) {

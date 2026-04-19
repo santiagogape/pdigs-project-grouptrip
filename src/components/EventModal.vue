@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import type { Evento } from '@/interfaces/models';
+import LocationPicker from '@/components/LocationPicker.vue';
 
 const props = defineProps<{
   visible: boolean;
@@ -50,6 +51,8 @@ const eventForm = ref({
   horaFin: extractTime(props.evento?.fechaHoraFin),
   precio: props.evento?.precio,
   lugar: props.evento?.lugar,
+  lat: props.evento?.lat,
+  lng: props.evento?.lng,
 })
 
 watch(
@@ -66,11 +69,12 @@ watch(
       horaFin: extractTime(ev.fechaHoraFin),
       precio: ev.precio,
       lugar: ev.lugar,
+      lat: ev.lat,
+      lng: ev.lng,
     };
   },
   { immediate: true }
 );
-console.log("evento recibido:", props.evento?.id);
 
 const rules = {
   required: (v: any) => !!v || 'Campo obligatorio',
@@ -105,6 +109,8 @@ const convertFormToEvent = (form): Evento => {
     fechaHoraFin: combineDateAndTimeToMillis(form.fecha, form.horaFin),
     precio: form.precio ?? undefined,
     lugar: form.lugar || undefined,
+    lat: form.lat ?? undefined,
+    lng: form.lng ?? undefined,
     gastos: [],
   };
 };
@@ -118,6 +124,15 @@ const handleSave = async () => {
   if (!valid.valid) return;
 
   emit('save', convertFormToEvent(eventForm.value));
+};
+
+const showLocationPicker = ref(false);
+
+const handleLocationConfirm = (location: { lat: number; lng: number; name?: string }) => {
+  eventForm.value.lugar = location.name || '';
+  eventForm.value.lat = location.lat;
+  eventForm.value.lng = location.lng;
+  showLocationPicker.value = false;
 };
 </script>
 
@@ -196,7 +211,8 @@ const handleSave = async () => {
                   :rules="[rules.required]"
                   variant="filled"
                   rounded="lg"
-                  prepend-inner-icon="mdi-map-marker-outline"
+                  append-inner-icon="mdi-map-marker"
+                  @click:append-inner="showLocationPicker = true"
                 />
               </v-col>
 
@@ -254,4 +270,9 @@ const handleSave = async () => {
 
     </v-card>
   </v-dialog>
+  <LocationPicker
+    :isOpen="showLocationPicker"
+    @close="showLocationPicker = false"
+    @confirm="handleLocationConfirm"
+  />
 </template>

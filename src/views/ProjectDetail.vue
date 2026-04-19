@@ -166,7 +166,7 @@ const clampMillis = (value: number, min: number, max: number) => {
 }
 
 const createFallbackEventFromSuggestion = (
-  suggestion: { nombre: string; tipo: string; precio?: number; lugar?: string },
+  suggestion: { nombre: string; tipo: string; precio?: number; lugar?: string; lat?: number | null; lng?: number | null },
   index: number,
   total: number,
   projectStart: number,
@@ -186,12 +186,14 @@ const createFallbackEventFromSuggestion = (
     fechaHoraFin: Math.max(endMillis, startMillis + 15 * 60 * 1000),
     precio: suggestion.precio,
     lugar: suggestion.lugar,
+    lat: suggestion.lat,
+    lng: suggestion.lng,
     gastos: []
   }
 }
 
 const normalizeSuggestedEvent = (
-  suggestion: { nombre: string; tipo: string; fechaHoraInicio: string; fechaHoraFin: string; precio?: number; lugar?: string },
+  suggestion: { nombre: string; tipo: string; fechaHoraInicio: string; fechaHoraFin: string; precio?: number; lugar?: string; lat?: number | null; lng?: number | null },
   index: number,
   total: number,
   projectStart: number,
@@ -329,11 +331,9 @@ const submitEvent = async () => {
   const openModal = (evento: Evento) => {
     eventoSeleccionado.value = evento;
     showEventModal.value = true;
-    console.log(evento.nombre)
   };
 
 const saveEventEdited = async (event: Evento) => {
-  console.log('Evento editado:', event.id);
   try {
     await projectService.updateEvent(projectId, event);
     showEventModal.value = false;
@@ -771,7 +771,6 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
-<<<<<<< HEAD
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -780,7 +779,8 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
   justify-content: center;
   align-items: center;
   z-index: 9999;
-=======
+}
+
 .actividades-timeline .v-timeline-item__body {
   flex: 1 1 auto;
   min-width: 0;
@@ -817,6 +817,5 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
   display: flex;
   align-items: flex-end;
   gap: 4px;
->>>>>>> 892cf5ad4b7f24fbcf9d04c3b0ad8c13db680b6a
 }
 </style>

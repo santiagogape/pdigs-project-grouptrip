@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
-import { loadGoogleMaps } from '@/services/GoogleMapsServices'
+import { loadGoogleMaps } from '@/services/remote/google/googleMapsServices'
 import type { Evento } from '@/interfaces/models'
 
 const props = defineProps<{

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick } from "vue";
-import { loadGoogleMaps } from "@/services/GoogleMapsServices";
+import { loadGoogleMaps } from "@/services/remote/google/googleMapsServices";
 
 const props = defineProps<{
   isOpen: boolean;
@@ -96,8 +96,6 @@ const initMap = async () => {
     console.error("Error obteniendo dirección:", error);
     selectedName = "Ubicación seleccionada manualmente";
   }
-
-  console.log("Click en mapa:", selectedPosition, selectedName);
   });
 
   initAutocomplete();
