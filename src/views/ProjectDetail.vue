@@ -45,12 +45,12 @@ const cargarMiembros = async () => {
     if (proyecto.value?.owner) {
       const owner = await projectService.getUser(proyecto.value.owner);
       if (owner) miembros.value = [owner];
+      const users = await projectService.getUsersByProject(projectId);
+      miembros.value = [...miembros.value, ...users];
     }
   } catch (e) {
     console.error("Error cargando miembros:", e);
   }
-
-
 };
 
 onMounted(async () => {

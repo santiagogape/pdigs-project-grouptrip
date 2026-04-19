@@ -117,6 +117,22 @@ export const projectService = {
     return projects;
   },
 
+  async getUsersByProject(projectId: string): Promise<Usuario[]> {
+    const relationRef = collection(db, 'proyecto_usuario');
+    const q = query(relationRef, where('projectId', '==', projectId));
+    const snap = await getDocs(q);
+
+    const userIds = snap.docs.map(doc => doc.data().userId as string);
+
+    const users: Usuario[] = [];
+    for (const id of userIds) {
+      const user = await this.getUser(id);
+      if (user) users.push(user);
+    }
+
+    return users;
+},
+
   async removeProject(projectId: string): Promise<void> {
     const res = await this._removeProjectUserRelation(projectId);
     if (!res) throw new Error("No se pudo eliminar las relaciones del proyecto");
