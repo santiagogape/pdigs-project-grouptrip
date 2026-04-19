@@ -131,10 +131,12 @@ const features = [
             <v-btn
               color="var(--color-orange)"
               size="x-large"
-              class="brutalist-btn text-black font-weight-black px-12"
+              class="brutalist-btn font-weight-black"
               to="/register"
+              elevation="0"
             >
               CREAR MI PRIMER VIAJE
+              <v-icon end>mdi-arrow-right</v-icon>
             </v-btn>
           </v-card>
         </v-container>

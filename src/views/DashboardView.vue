@@ -46,7 +46,7 @@ const formatFecha = (ts?: number) => {
     <v-main class="dashboard-bg">
       <v-container class="py-10">
 
-        <header class="d-flex justify-space-between align-end mb-10">
+        <header class="d-flex justify-space-between align-end mb-10" style="margin-bottom: 2rem;">
           <div>
             <h1 class="auth-title">Mis Aventuras</h1>
             <p class="auth-subtitle">Tienes {{ proyectos.length }} viajes planeados</p>
@@ -193,5 +193,9 @@ const formatFecha = (ts?: number) => {
 
 .bg-white {
   background-color: white !important;
+}
+
+.v-btn {
+  padding: 1rem;
 }
 </style>

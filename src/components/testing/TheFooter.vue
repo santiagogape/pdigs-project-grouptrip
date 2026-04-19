@@ -30,10 +30,19 @@ const topSurfaces = [
         <p class="cta-text">Organiza viajes en grupo, comparte gastos y crea recuerdos inolvidables con quienes más quieres.</p>
 
         <RouterLink to="#" class="cta-link">
-          <v-btn class="cta-btn text-white" rounded="lg" elevation="0" size="x-large">
-            Comienza ahora
-            <v-icon end>mdi-arrow-right</v-icon>
-          </v-btn>
+          <div class="d-flex gap-6 flex-wrap">
+            <v-btn
+              color="var(--color-orange)"
+              size="x-large"
+              class="brutalist-btn font-weight-black"
+              to="/register"
+              elevation="0"
+            >
+              Comienza gratis
+            </v-btn>
+          </div>
+
+
         </RouterLink>
       </div>
     </section>
@@ -139,6 +148,37 @@ const topSurfaces = [
   height: auto;
   display: block;
 }
+/* BOTONES BRUTALISTAS */
+.brutalist-btn {
+  border: 3px solid #000 !important;
+  border-radius: 12px !important;
+  box-shadow: 4px 4px 0px #000;
+  transition: all 0.1s ease;
+  text-transform: uppercase;
+}
+
+.brutalist-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px #000;
+}
+
+.brutalist-btn-outline {
+  border: 3px solid #000 !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.7);
+  transition: all 0.1s ease;
+  text-transform: uppercase;
+}
+
+.brutalist-btn-outline:hover {
+  background: #000;
+  color: #fff !important;
+}
+
+.v-btn {
+  padding: 1rem;
+}
+
 
 @media (max-width: 760px) {
   .footer-top-inner {

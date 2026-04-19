@@ -46,7 +46,10 @@ const cargarMiembros = async () => {
       const owner = await projectService.getUser(proyecto.value.owner);
       if (owner) miembros.value = [owner];
       const users = await projectService.getUsersByProject(projectId);
-      miembros.value = [...miembros.value, ...users];
+      miembros.value = [
+        ...miembros.value,
+        ...users.filter(user => !miembros.value.some(member => member.uid === user.uid))
+      ];
     }
   } catch (e) {
     console.error("Error cargando miembros:", e);

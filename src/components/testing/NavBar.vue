@@ -8,7 +8,7 @@ const navItems = [
 <template>
   <v-app-bar app flat class="nav-bar px-4" height="92">
     <div class="nav-left">
-      <RouterLink to="/about" class="logo-link" aria-label="Ir al inicio">
+      <RouterLink to="/" class="logo-link" aria-label="Ir al inicio">
         <img src="@/assets/logo/icon.small.png" alt="Logo" height="60" width="140" contain />
       </RouterLink>
 
@@ -27,7 +27,7 @@ const navItems = [
     </div>
 
     <template #append>
-      <RouterLink to="/profile" class="profile-link" aria-label="Perfil de usuario">
+      <RouterLink to="/login" class="profile-link" aria-label="Perfil de usuario">
         <v-avatar size="68" class="profile-avatar">
           <v-icon size="40">mdi-account-outline</v-icon>
         </v-avatar>
