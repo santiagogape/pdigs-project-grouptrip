@@ -29,18 +29,50 @@ const formRef = ref();
 const isFormValid = ref(false);
 const showLocationPicker = ref(false);
 
-const formatDateForDisplay = (value: string) => {
-  if (!value) return '';
-  const [year, month, day] = value.split('-');
-  return `${day}/${month}/${year}`;
-};
+const normalizeDatePickerValue = (value: unknown): string => {
+  if (!value) return ''
+
+  const raw = Array.isArray(value) ? value[0] : value
+  if (!raw) return ''
+
+  if (typeof raw === 'string') {
+    if (raw.includes('-')) return raw
+
+    const parsed = new Date(raw)
+    if (!Number.isNaN(parsed.getTime())) {
+      const year = parsed.getFullYear()
+      const month = String(parsed.getMonth() + 1).padStart(2, '0')
+      const day = String(parsed.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
+    return ''
+  }
+
+  if (raw instanceof Date) {
+    const year = raw.getFullYear()
+    const month = String(raw.getMonth() + 1).padStart(2, '0')
+    const day = String(raw.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  return ''
+}
+
+const formatDateForDisplay = (value: unknown) => {
+  const normalized = normalizeDatePickerValue(value)
+  if (!normalized) return ''
+
+  const [year, month, day] = normalized.split('-')
+  return `${day}/${month}/${year}`
+}
 
 const formatTimeForDisplay = (value: string) => {
   if (!value) return '';
   return value;
 };
 
-const handleFechaInicioSelected = (value: string) => {
+const handleFechaInicioSelected = (value: string | null) => {
   if (!value) return;
 
   eventForm.value.fechaInicio = value;
@@ -54,33 +86,33 @@ const handleFechaInicioSelected = (value: string) => {
   showFechaInicioPicker.value = false;
 };
 
-const handleFechaFinSelected = (value: string) => {
+const handleFechaFinSelected = (value: string | null) => {
   if (!value) return;
 
   eventForm.value.fechaFin = value;
   showFechaFinPicker.value = false;
 };
 
-const handleHoraInicioSelected = (value: string) => {
+const handleHoraInicioSelected = (value: string | null) => {
   if (!value) return;
   eventForm.value.horaInicio = value;
   showHoraInicioPicker.value = false;
 };
 
-const handleHoraFinSelected = (value: string) => {
+const handleHoraFinSelected = (value: string | null) => {
   if (!value) return;
   eventForm.value.horaFin = value;
   showHoraFinPicker.value = false;
 };
 
 const formatDateNumberToInput = (value?: number | null) => {
-  if (!value) return '';
-  const str = String(value).padStart(8, '0');
-  const day = str.slice(0, 2);
-  const month = str.slice(2, 4);
-  const year = str.slice(4, 8);
-  return `${year}-${month}-${day}`;
-};
+  if (!value) return ''
+  const str = String(value).padStart(8, '0')
+  const year = str.slice(0, 4)
+  const month = str.slice(4, 6)
+  const day = str.slice(6, 8)
+  return `${year}-${month}-${day}`
+}
 
 const formatTimeNumberToInput = (value?: number | null) => {
   if (value === null || value === undefined) return '';
@@ -91,9 +123,9 @@ const formatTimeNumberToInput = (value?: number | null) => {
 };
 
 const parseDateInputToNumber = (value: string) => {
-  const [year, month, day] = value.split('-');
-  return Number(`${day}${month}${year}`);
-};
+  const [year, month, day] = value.split('-')
+  return Number(`${year}${month}${day}`)
+}
 
 const parseTimeInputToNumber = (value: string) => {
   const [hours, minutes] = value.split(':');
@@ -101,9 +133,9 @@ const parseTimeInputToNumber = (value: string) => {
 };
 
 const isEndDateAfterOrEqualStartDate = (startDate: string, endDate: string) => {
-  if (!startDate || !endDate) return false;
-  return new Date(`${endDate}T00:00:00`).getTime() >= new Date(`${startDate}T00:00:00`).getTime();
-};
+  if (!startDate || !endDate) return false
+  return endDate >= startDate
+}
 
 const buildDefaultForm = () => ({
   id: undefined as string | undefined,

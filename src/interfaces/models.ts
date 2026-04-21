@@ -17,7 +17,7 @@ export interface Evento {
   optional: boolean; // Indica si el evento es opcional o no
   nombre: string;
   tipo: string;
-  fechaInicio: number // formato = ddmmyyyy
+  fechaInicio: number // formato = yyyymmdd
   fechaFin: number
   horaInicio: number // hhMM
   horaFin: number
