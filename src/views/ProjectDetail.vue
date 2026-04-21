@@ -27,6 +27,13 @@ const eventos = ref<Evento[]>([]);
 const miembros = ref<Usuario[]>([]);
 const loading = ref(true);
 const primerMiembro = computed(() => miembros.value[0] ?? null);
+const filterMode = ref<'all' | 'day' | 'timeRangeInDay' | 'fromDay' | 'untilDay'>('all')
+const filterDate = ref('')
+const filterStartHour = ref('')
+const filterEndHour = ref('')
+const showFilterDatePicker = ref(false)
+const showFilterStartTimePicker = ref(false)
+const showFilterEndTimePicker = ref(false)
 
 // Modal único para crear/editar
 const showEventModal = ref(false);
@@ -78,14 +85,99 @@ onUnmounted(() => {
 });
 
 // Helpers de fecha y hora
+const normalizeDatePickerValue = (value: unknown): string => {
+  if (!value) return ''
+
+  const raw = Array.isArray(value) ? value[0] : value
+  if (!raw) return ''
+
+  if (typeof raw === 'string') {
+    if (raw.includes('-')) return raw
+
+    const parsed = new Date(raw)
+    if (!Number.isNaN(parsed.getTime())) {
+      const year = parsed.getFullYear()
+      const month = String(parsed.getMonth() + 1).padStart(2, '0')
+      const day = String(parsed.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
+    return ''
+  }
+
+  if (raw instanceof Date) {
+    const year = raw.getFullYear()
+    const month = String(raw.getMonth() + 1).padStart(2, '0')
+    const day = String(raw.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  return ''
+}
+
+const formatDateForDisplay = (value: string) => {
+  if (!value) return ''
+  const [year, month, day] = value.split('-')
+  return `${day}/${month}/${year}`
+}
+
+const formatTimeForDisplay = (value: string) => {
+  return value || ''
+}
+
+const handleFilterDateSelected = (value: unknown) => {
+  const normalized = normalizeDatePickerValue(value)
+  if (!normalized) return
+  filterDate.value = normalized
+  showFilterDatePicker.value = false
+}
+
+const handleFilterStartHourSelected = (value: string | null) => {
+  if (!value) return
+  filterStartHour.value = value
+  showFilterStartTimePicker.value = false
+}
+
+const handleFilterEndHourSelected = (value: string | null) => {
+  if (!value) return
+  filterEndHour.value = value
+  showFilterEndTimePicker.value = false
+}
+
+const parseInputDateToComparableNumber = (value: string) => {
+  if (!value) return null
+  const [year, month, day] = value.split('-')
+  return Number(`${year}${month}${day}`)
+}
+
+const parseInputTimeToComparableNumber = (value: string) => {
+  if (!value) return null
+  const [hours, minutes] = value.split(':')
+  return Number(`${hours}${minutes}`)
+}
+
+const eventIntersectsTimeRangeInDay = (
+  ev: Evento,
+  day: number,
+  startHour: number,
+  endHour: number
+) => {
+  if (ev.fechaInicio > day || ev.fechaFin < day) return false
+
+  const eventStart = ev.fechaInicio === day ? ev.horaInicio : 0
+  const eventEnd = ev.fechaFin === day ? ev.horaFin : 2359
+
+  return eventStart <= endHour && eventEnd >= startHour
+}
+
 const formatDateNumberToInput = (value?: number | null) => {
-  if (!value) return '';
-  const str = String(value).padStart(8, '0');
-  const day = str.slice(0, 2);
-  const month = str.slice(2, 4);
-  const year = str.slice(4, 8);
-  return `${year}-${month}-${day}`;
-};
+  if (!value) return ''
+  const str = String(value).padStart(8, '0')
+  const year = str.slice(0, 4)
+  const month = str.slice(4, 6)
+  const day = str.slice(6, 8)
+  return `${year}-${month}-${day}`
+}
 
 const formatTimeNumberToInput = (value?: number | null) => {
   if (value === null || value === undefined) return '';
@@ -117,13 +209,13 @@ const formatHora = (hora?: number | null) => {
 };
 
 const formatFecha = (fecha?: number | null) => {
-  if (!fecha) return '--/--/----';
-  const str = String(fecha).padStart(8, '0');
-  const day = str.slice(0, 2);
-  const month = str.slice(2, 4);
-  const year = str.slice(4, 8);
-  return `${day}/${month}/${year}`;
-};
+  if (!fecha) return '--/--/----'
+  const str = String(fecha).padStart(8, '0')
+  const year = str.slice(0, 4)
+  const month = str.slice(4, 6)
+  const day = str.slice(6, 8)
+  return `${day}/${month}/${year}`
+}
 
 const formatRangoEvento = (ev: Evento) => {
   const mismaFecha = ev.fechaInicio === ev.fechaFin;
@@ -141,11 +233,11 @@ const parseIsoDateTimeToDate = (value: string) => {
 };
 
 const dateToDateNumber = (date: Date) => {
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = String(date.getFullYear());
-  return Number(`${day}${month}${year}`);
-};
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = String(date.getFullYear())
+  return Number(`${year}${month}${day}`)
+}
 
 const dateToTimeNumber = (date: Date) => {
   const hours = String(date.getHours()).padStart(2, '0');
@@ -159,23 +251,55 @@ const clampDate = (value: Date, min: Date, max: Date) => {
 
 const activityTab = ref<'list' | 'calendar' | 'map'>('list');
 
-const calendarEvents = computed(() => {
+const filteredEventos = computed(() => {
+  const day = parseInputDateToComparableNumber(filterDate.value)
+  const startHour = parseInputTimeToComparableNumber(filterStartHour.value)
+  const endHour = parseInputTimeToComparableNumber(filterEndHour.value)
+
   return [...eventos.value]
+    .filter((ev) => {
+      switch (filterMode.value) {
+        case 'all':
+          return true
+
+        case 'day':
+          if (!day) return true
+          return ev.fechaInicio <= day && ev.fechaFin >= day
+
+        case 'timeRangeInDay':
+          if (!day || startHour === null || endHour === null) return true
+          if (endHour < startHour) return false
+          return eventIntersectsTimeRangeInDay(ev, day, startHour, endHour)
+
+        case 'fromDay':
+          if (!day) return true
+          return ev.fechaInicio >= day || ev.fechaFin >= day
+
+        case 'untilDay':
+          if (!day) return true
+          return ev.fechaInicio <= day || ev.fechaFin <= day
+
+        default:
+          return true
+      }
+    })
     .sort(compareEventos)
-    .map((ev) => ({
-      title: ev.nombre,
-      start: eventoStartDate(ev),
-      end: eventoEndDate(ev),
-      color: 'indigo',
-      allDay: false,
-    }));
-});
+})
+
+const calendarEvents = computed(() => {
+  return [...filteredEventos.value].map((ev) => ({
+    title: ev.nombre,
+    start: eventoStartDate(ev),
+    end: eventoEndDate(ev),
+    color: 'indigo',
+    allDay: false,
+  }))
+})
 
 const mapEvents = computed(() => {
-  return [...eventos.value]
+  return [...filteredEventos.value]
     .filter((ev) => ev.lat != null && ev.lng != null)
-    .sort(compareEventos);
-});
+})
 
 const createFallbackEventFromSuggestion = (
   suggestion: { nombre: string; tipo: string; precio?: number; lugar?: string; lat?: number | null; lng?: number | null },
@@ -459,6 +583,122 @@ const deleteEvent = async (event: Evento) => {
               </v-card-text>
 
               <v-card-text class="pa-6 pt-0">
+                <div class="mb-4 filter-grid">
+                  <div class="filter-grid-main">
+                    <div class="filter-grid-item">
+                      <v-select
+                        v-model="filterMode"
+                        label="Filtro"
+                        variant="outlined"
+                        rounded="xl"
+                        :items="[
+                          { title: 'Todos', value: 'all' },
+                          { title: 'Eventos de un día', value: 'day' },
+                          { title: 'Rango de horas en un día', value: 'timeRangeInDay' },
+                          { title: 'A partir de un día', value: 'fromDay' },
+                          { title: 'Antes de un día', value: 'untilDay' }
+                        ]"
+                      />
+                    </div>
+
+                    <div
+                      v-if="filterMode !== 'all'"
+                      class="filter-grid-item"
+                    >
+                      <v-menu
+                        v-model="showFilterDatePicker"
+                        :close-on-content-click="false"
+                        location="bottom"
+                      >
+                        <template #activator="{ props: menuProps }">
+                          <v-text-field
+                            v-bind="menuProps"
+                            :model-value="formatDateForDisplay(filterDate)"
+                            label="Fecha"
+                            variant="outlined"
+                            rounded="xl"
+                            readonly
+                            append-inner-icon="mdi-calendar"
+                          />
+                        </template>
+
+                        <v-date-picker
+                          :model-value="filterDate"
+                          @update:model-value="handleFilterDateSelected"
+                        />
+                      </v-menu>
+                    </div>
+
+                    <template v-if="filterMode === 'timeRangeInDay'">
+                      <div class="filter-grid-item">
+                        <v-menu
+                          v-model="showFilterStartTimePicker"
+                          :close-on-content-click="false"
+                          location="bottom"
+                        >
+                          <template #activator="{ props: menuProps }">
+                            <v-text-field
+                              v-bind="menuProps"
+                              :model-value="formatTimeForDisplay(filterStartHour)"
+                              label="Desde"
+                              variant="outlined"
+                              rounded="xl"
+                              readonly
+                              append-inner-icon="mdi-clock-outline"
+                            />
+                          </template>
+
+                          <v-time-picker
+                            :model-value="filterStartHour"
+                            format="24hr"
+                            @update:model-value="handleFilterStartHourSelected"
+                          />
+                        </v-menu>
+                      </div>
+
+                      <div class="filter-grid-item">
+                        <v-menu
+                          v-model="showFilterEndTimePicker"
+                          :close-on-content-click="false"
+                          location="bottom"
+                        >
+                          <template #activator="{ props: menuProps }">
+                            <v-text-field
+                              v-bind="menuProps"
+                              :model-value="formatTimeForDisplay(filterEndHour)"
+                              label="Hasta"
+                              variant="outlined"
+                              rounded="xl"
+                              readonly
+                              append-inner-icon="mdi-clock-outline"
+                            />
+                          </template>
+
+                          <v-time-picker
+                            :model-value="filterEndHour"
+                            format="24hr"
+                            @update:model-value="handleFilterEndHourSelected"
+                          />
+                        </v-menu>
+                      </div>
+                    </template>
+                  </div>
+
+                  <div class="filter-actions">
+                    <v-btn
+                      variant="outlined"
+                      rounded="xl"
+                      @click="
+                        filterMode = 'all';
+                        filterDate = '';
+                        filterStartHour = '';
+                        filterEndHour = '';
+                      "
+                    >
+                      Limpiar
+                    </v-btn>
+                  </div>
+                </div>
                 <v-tabs v-model="activityTab" color="indigo" grow>
                   <v-tab value="list">Lista</v-tab>
                   <v-tab value="calendar">Calendario</v-tab>
@@ -468,47 +708,47 @@ const deleteEvent = async (event: Evento) => {
                 <v-window v-model="activityTab" class="mt-4">
                   <v-window-item value="list">
                     <v-timeline
-                      v-if="eventos.length"
+                      v-if="filteredEventos.length"
                       class="actividades-timeline"
                       side="end"
                       align="start"
                       density="compact"
                     >
                       <v-timeline-item
-                        v-for="(ev, i) in eventos"
+                        v-for="(ev, i) in filteredEventos"
                         :key="ev.id ?? i"
                         dot-color="indigo-lighten-4"
                         size="x-small"
                         style="width: 100%;"
                       >
-                        <div class="d-flex align-start w-100">
-                          <div class="d-flex flex-column" style="min-width: 150px">
-                            <span class="text-caption font-weight-bold text-indigo">
+                        <div class="evento-item">
+                          <div class="evento-main">
+                            <div class="evento-fecha text-caption font-weight-bold text-indigo">
                               {{ formatRangoEvento(ev) }}
-                            </span>
+                            </div>
+
+                            <div class="evento-contenido">
+                              <div class="text-body-2 font-weight-bold">{{ ev.nombre }}</div>
+                              <div class="text-caption text-grey">{{ ev.tipo }}</div>
+
+                              <div
+                                v-if="ev.optional"
+                                class="text-caption text-orange-darken-2 font-weight-medium"
+                              >
+                                <v-icon size="x-small" icon="mdi-star-outline" /> Opcional
+                              </div>
+
+                              <div v-if="ev.lugar" class="text-caption text-grey-darken-1">
+                                <v-icon size="x-small" icon="mdi-map-marker" /> {{ ev.lugar }}
+                              </div>
+
+                              <div v-if="ev.precio != null" class="text-caption text-grey-darken-1">
+                                <v-icon size="x-small" icon="mdi-currency-usd" /> {{ ev.precio }}
+                              </div>
+                            </div>
                           </div>
 
-                          <div class="flex-grow-1 ml-4">
-                            <div class="text-body-2 font-weight-bold">{{ ev.nombre }}</div>
-                            <div class="text-caption text-grey">{{ ev.tipo }}</div>
-
-                            <div
-                              v-if="ev.optional"
-                              class="text-caption text-orange-darken-2 font-weight-medium"
-                            >
-                              <v-icon size="x-small" icon="mdi-star-outline" /> Opcional
-                            </div>
-
-                            <div v-if="ev.lugar" class="text-caption text-grey-darken-1">
-                              <v-icon size="x-small" icon="mdi-map-marker" /> {{ ev.lugar }}
-                            </div>
-
-                            <div v-if="ev.precio != null" class="text-caption text-grey-darken-1">
-                              <v-icon size="x-small" icon="mdi-currency-usd" /> {{ ev.precio }}
-                            </div>
-                          </div>
-
-                          <div class="align-self-end ml-auto d-flex">
+                          <div class="evento-actions">
                             <v-btn
                               icon="mdi-pencil"
                               variant="text"
@@ -628,6 +868,64 @@ const deleteEvent = async (event: Evento) => {
 </template>
 
 <style scoped>
+
+.evento-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+}
+
+.evento-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.evento-fecha {
+  margin-bottom: 6px;
+}
+
+.evento-contenido {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.evento-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.filter-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filter-grid-main {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.filter-grid-item {
+  min-width: 0;
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+@media (max-width: 700px) {
+  .filter-grid-main {
+    grid-template-columns: 1fr;
+  }
+}
+
 .dashboard-bg {
   background-color: #f0f2f5 !important;
   min-height: 100vh;
