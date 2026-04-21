@@ -14,12 +14,15 @@ export interface Gasto {
 // --- Modelo de Eventos (Anidado en Proyecto) ---
 export interface Evento {
   id?: string;
+  optional: boolean; // Indica si el evento es opcional o no
   nombre: string;
   tipo: string;
-  fechaHoraInicio: number; // Millis
-  fechaHoraFin: number;    // Millis
-  precio?: number | null;         // Opcional
-  lugar?: string | null;          // nombre del lugar
+  fechaInicio: number // formato = ddmmyyyy
+  fechaFin: number
+  horaInicio: number // hhMM
+  horaFin: number
+  precio?: number | null;
+  lugar?: string | null;
   lat?: number | null;
   lng?: number | null;
   gastos: Gasto[];
