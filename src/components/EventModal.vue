@@ -122,8 +122,13 @@ const formatTimeNumberToInput = (value?: number | null) => {
   return `${hours}:${minutes}`;
 };
 
-const parseDateInputToNumber = (value: string) => {
-  const [year, month, day] = value.split('-')
+const parseDateInputToNumber = (value: unknown) => {
+  const normalized = normalizeDatePickerValue(value)
+  if (!normalized) {
+    throw new Error('Fecha inválida')
+  }
+
+  const [year, month, day] = normalized.split('-')
   return Number(`${year}${month}${day}`)
 }
 
