@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { projectService } from '@/services/remote/firebase/projectService'
 import openAIService from '@/services/remote/openAI/openAIService'
@@ -8,6 +8,7 @@ import type { Proyecto } from '@/interfaces/models'
 const emit = defineEmits<{
   (event: 'cancelar'): void
   (event: 'crear', payload: Omit<Proyecto, 'projectId' | 'owner'>): void
+  (event: 'cambios', value: boolean): void
 }>()
 
 interface NewProjectFormState {
@@ -32,6 +33,34 @@ const form = reactive<NewProjectFormState>({
   presupuesto: 2000,
   descripcion: '',
   urlPortada: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800'
+})
+
+const hasUnsavedChanges = ref(false)
+
+const markAsDirty = (): void => {
+  if (hasUnsavedChanges.value) {
+    return
+  }
+
+  hasUnsavedChanges.value = true
+  emit('cambios', true)
+}
+
+const resetDirtyState = (): void => {
+  hasUnsavedChanges.value = false
+  emit('cambios', false)
+}
+
+watch(
+  form,
+  () => {
+    markAsDirty()
+  },
+  { deep: true }
+)
+
+watch(aiPrompt, () => {
+  markAsDirty()
 })
 
 const router = useRouter()
@@ -177,12 +206,13 @@ const handleGenerateWithAI = async (): Promise<void> => {
 
 const handleCreateProject = async (): Promise<void> => {
   const projectData = buildProjectData()
-  emit('crear', projectData)
 
   try {
     const newId = await projectService.createProject(projectData)
 
     if (newId) {
+      resetDirtyState()
+      emit('crear', projectData)
       router.push({ name: 'ProjectDetail', params: { id: newId } })
     }
   } catch (error) {
@@ -272,7 +302,7 @@ const handleCreateProject = async (): Promise<void> => {
       </section>
 
       <div class="setting-form-buttons">
-        <button @click="$emit('cancelar')" type="button" class="setting-form-button-cancel">
+        <button @click="emit('cancelar')" type="button" class="setting-form-button-cancel">
           Cancelar
         </button>
         <button type="submit" class="setting-form-button-submit">

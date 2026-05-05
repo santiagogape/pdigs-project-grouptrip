@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import type { Evento } from '@/interfaces/models';
 import LocationPicker from '@/components/LocationPicker.vue';
 
@@ -11,6 +11,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'save', evento: Evento): void;
+  (e: 'changes', value: boolean): void;
 }>();
 
 const showFechaInicioPicker = ref(false);
@@ -183,20 +184,51 @@ const mapEventoToForm = (ev: Evento | null) => {
 
 const eventForm = ref(mapEventoToForm(props.evento));
 
+
+const hasUnsavedChanges = ref(false);
+const ignoreDirtyTracking = ref(false);
+
+const markAsDirty = (): void => {
+  if (!props.visible || ignoreDirtyTracking.value || hasUnsavedChanges.value) {
+    return;
+  }
+
+  hasUnsavedChanges.value = true;
+  emit('changes', true);
+};
+
+const resetDirtyState = (): void => {
+  hasUnsavedChanges.value = false;
+  emit('changes', false);
+};
+
+const setFormWithoutDirty = async (value: ReturnType<typeof mapEventoToForm>): Promise<void> => {
+  ignoreDirtyTracking.value = true;
+  eventForm.value = value;
+  resetDirtyState();
+
+  await nextTick();
+
+  ignoreDirtyTracking.value = false;
+};
+
 watch(
   () => props.evento,
-  (ev) => {
-    eventForm.value = mapEventoToForm(ev);
+  async (ev) => {
+    await setFormWithoutDirty(mapEventoToForm(ev));
   },
   { immediate: true }
 );
 
 watch(
   () => props.visible,
-  (visible) => {
-    if (visible && !props.evento) {
-      eventForm.value = buildDefaultForm();
+  async (visible) => {
+    if (visible) {
+      await setFormWithoutDirty(mapEventoToForm(props.evento));
+      return;
     }
+
+    resetDirtyState();
   }
 );
 
@@ -223,6 +255,14 @@ watch(
       eventForm.value.fechaFin = fechaInicio;
     }
   }
+);
+
+watch(
+  eventForm,
+  () => {
+    markAsDirty();
+  },
+  { deep: true }
 );
 
 const dialogTitle = computed(() =>

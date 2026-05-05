@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, onBeforeRouteLeave  } from 'vue-router';
 import { projectService } from '@/services/remote/firebase/projectService';
 import type { Proyecto, Evento, Usuario } from '@/interfaces/models';
 import openAIService from '@/services/remote/openAI/openAIService';
@@ -38,6 +38,7 @@ const showFilterEndTimePicker = ref(false)
 // Modal único para crear/editar
 const showEventModal = ref(false);
 const eventoSeleccionado = ref<Evento | null>(null);
+const hasUnsavedEventChanges = ref(false);
 
 // Limpieza de suscripciones
 let unsubProject: (() => void) | undefined;
@@ -60,11 +61,37 @@ const cargarMiembros = async () => {
   }
 };
 
+const isTyping = (target: EventTarget | null): boolean => {
+  const el = target as HTMLElement | null;
+
+  return (
+    el?.tagName === 'INPUT' ||
+    el?.tagName === 'TEXTAREA' ||
+    el?.isContentEditable === true
+  );
+};
+
+const handleProjectHotkeys = (event: KeyboardEvent): void => {
+  if (isTyping(event.target)) {
+    return;
+  }
+
+  if (event.shiftKey && event.key.toLowerCase() === 'e') {
+    event.preventDefault();
+
+    if (!showEventModal.value) {
+      openCreateModal();
+    }
+  }
+};
+
 onMounted(async () => {
   if (!projectId) {
     router.push('/');
     return;
   }
+
+  window.addEventListener('keydown', handleProjectHotkeys);
 
   unsubProject = projectService.subscribeToProject(projectId, (data) => {
     if (data) {
@@ -80,6 +107,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  window.removeEventListener('keydown', handleProjectHotkeys);
   if (unsubProject) unsubProject();
   if (unsubEvents) unsubEvents();
 });
@@ -440,13 +468,47 @@ const initializeTripWithAI = async () => {
 };
 
 const openCreateModal = () => {
+  if (showEventModal.value) {
+    return;
+  }
+
   eventoSeleccionado.value = null;
+  hasUnsavedEventChanges.value = false;
   showEventModal.value = true;
 };
 
 const openEditModal = (evento: Evento) => {
+  if (showEventModal.value) {
+    return;
+  }
+
   eventoSeleccionado.value = { ...evento };
+  hasUnsavedEventChanges.value = false;
   showEventModal.value = true;
+};
+
+const handleEventDirtyChange = (value: boolean): void => {
+  hasUnsavedEventChanges.value = value;
+};
+
+const confirmDiscardEventChanges = (): boolean => {
+  if (!showEventModal.value || !hasUnsavedEventChanges.value) {
+    return true;
+  }
+
+  return window.confirm(
+    'Tienes cambios sin guardar en el evento. ¿Seguro que quieres salir?'
+  );
+};
+
+const closeEventModal = (): void => {
+  if (!confirmDiscardEventChanges()) {
+    return;
+  }
+
+  showEventModal.value = false;
+  eventoSeleccionado.value = null;
+  hasUnsavedEventChanges.value = false;
 };
 
 const saveEvent = async (event: Evento) => {
@@ -461,7 +523,7 @@ const saveEvent = async (event: Evento) => {
     } else {
       await projectService.addEventToProject(projectId, event);
     }
-
+    hasUnsavedEventChanges.value = false;
     showEventModal.value = false;
     eventoSeleccionado.value = null;
   } catch (e) {
@@ -484,6 +546,12 @@ const deleteEvent = async (event: Evento) => {
     alert('No se pudo eliminar el evento');
   }
 };
+
+onBeforeRouteLeave(() => {
+  return confirmDiscardEventChanges();
+});
+
+
 </script>
 
 <template>
@@ -855,10 +923,11 @@ const deleteEvent = async (event: Evento) => {
   </v-app>
 
   <EventModal
-    :visible="showEventModal"
-    :evento="eventoSeleccionado"
-    @close="showEventModal = false"
-    @save="saveEvent"
+  :visible="showEventModal"
+  :evento="eventoSeleccionado"
+  @close="closeEventModal"
+  @save="saveEvent"
+  @changes="handleEventDirtyChange"
   />
 
   <ShareProjectDialog
