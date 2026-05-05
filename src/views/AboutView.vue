@@ -49,6 +49,7 @@ const features = [
               <div class="hero-image-container">
                 <div class="image-backdrop"></div>
                 <v-img
+                  alt="Imagen de viajeros felices planificando su viaje"
                   src="https://images.unsplash.com/photo-1527631746610-bca00a040d60?q=80&w=800"
                   cover
                   class="hero-img border-black shadow-brutal"
@@ -97,6 +98,7 @@ const features = [
             <v-col cols="12" md="6">
               <v-card class="border-black shadow-brutal overflow-hidden">
                 <v-img
+                  alt="Imagen de amigos colaborando en la planificación de un viaje"
                   src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=800"
                   height="400"
                   cover
