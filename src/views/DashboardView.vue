@@ -76,6 +76,7 @@ const formatFecha = (ts?: number) => {
           >
             <v-card class="project-card" elevation="0" @click="irADetalle(proyecto.projectId)">
               <v-img
+                alt="Imagen de portada del viaje a {{ proyecto.destino }}"
                 :src="proyecto.urlPortada"
                 height="220"
                 cover
