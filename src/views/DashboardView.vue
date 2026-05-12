@@ -85,7 +85,7 @@ const formatFecha = (ts?: number) => {
                   <v-chip size="x-small" color="var(--color-orange)" class="mb-2 font-weight-bold" label>
                     {{ proyecto.destino }}
                   </v-chip>
-                  <h3 class="text-h5 font-weight-black">{{ proyecto.nombre }}</h3>
+                  <h3 class="text-h5 font-weight-black">{{ proyecto.descripcion }}</h3>
                 </div>
               </v-img>
 
