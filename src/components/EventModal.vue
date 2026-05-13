@@ -16,8 +16,6 @@ const emit = defineEmits<{
 
 const showFechaInicioPicker = ref(false);
 const showFechaFinPicker = ref(false);
-const showHoraInicioPicker = ref(false);
-const showHoraFinPicker = ref(false);
 
 const internalVisible = computed({
   get: () => props.visible,
@@ -68,11 +66,6 @@ const formatDateForDisplay = (value: unknown) => {
   return `${day}/${month}/${year}`
 }
 
-const formatTimeForDisplay = (value: string) => {
-  if (!value) return '';
-  return value;
-};
-
 const handleFechaInicioSelected = (value: string | null) => {
   if (!value) return;
 
@@ -92,18 +85,6 @@ const handleFechaFinSelected = (value: string | null) => {
 
   eventForm.value.fechaFin = value;
   showFechaFinPicker.value = false;
-};
-
-const handleHoraInicioSelected = (value: string | null) => {
-  if (!value) return;
-  eventForm.value.horaInicio = value;
-  showHoraInicioPicker.value = false;
-};
-
-const handleHoraFinSelected = (value: string | null) => {
-  if (!value) return;
-  eventForm.value.horaFin = value;
-  showHoraFinPicker.value = false;
 };
 
 const formatDateNumberToInput = (value?: number | null) => {
@@ -134,6 +115,10 @@ const parseDateInputToNumber = (value: unknown) => {
 }
 
 const parseTimeInputToNumber = (value: string) => {
+  if (!/^\d{2}:\d{2}$/.test(value)) {
+    throw new Error('Hora inválida');
+  }
+
   const [hours, minutes] = value.split(':');
   return Number(`${hours}${minutes}`);
 };
@@ -278,6 +263,9 @@ const dialogSubtitle = computed(() =>
 const rules = {
   required: (v: any) => !!v || 'Campo obligatorio',
 
+  timeFormat: (v: string) =>
+    /^\d{2}:\d{2}$/.test(v) || 'Introduce una hora válida',
+
   minLength: (min: number) => (v: string) =>
     (v && v.length >= min) || `Mínimo ${min} caracteres`,
 
@@ -351,7 +339,7 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
         <template #prepend>
           <v-icon
             :icon="props.evento ? 'mdi-calendar-edit' : 'mdi-calendar-plus'"
-            color="indigo"
+            color="red-darken-3"
             size="large"
             class="me-3"
           />
@@ -439,64 +427,34 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
               <v-checkbox
                 v-model="eventForm.isMultiDay"
                 label="Este evento dura más de un día"
-                color="indigo"
+                color="red-darken-3"
                 density="comfortable"
                 hide-details
               />
             </v-col>
 
             <v-col cols="12" md="6">
-              <v-menu
-                v-model="showHoraInicioPicker"
-                :close-on-content-click="false"
-                location="bottom"
-              >
-                <template #activator="{ props: menuProps }">
-                  <v-text-field
-                    v-bind="menuProps"
-                    :model-value="formatTimeForDisplay(eventForm.horaInicio)"
-                    label="Hora inicio"
-                    :rules="[rules.required]"
-                    variant="outlined"
-                    rounded="xl"
-                    readonly
-                    append-inner-icon="mdi-clock-outline"
-                  />
-                </template>
-
-                <v-time-picker
-                  :model-value="eventForm.horaInicio"
-                  format="24hr"
-                  @update:model-value="handleHoraInicioSelected"
-                />
-              </v-menu>
+              <v-text-field
+                v-model="eventForm.horaInicio"
+                type="time"
+                label="Hora inicio"
+                :rules="[rules.required, rules.timeFormat]"
+                variant="outlined"
+                rounded="xl"
+                prepend-inner-icon="mdi-clock-outline"
+              />
             </v-col>
 
             <v-col cols="12" md="6">
-              <v-menu
-                v-model="showHoraFinPicker"
-                :close-on-content-click="false"
-                location="bottom"
-              >
-                <template #activator="{ props: menuProps }">
-                  <v-text-field
-                    v-bind="menuProps"
-                    :model-value="formatTimeForDisplay(eventForm.horaFin)"
-                    label="Hora fin"
-                    :rules="[rules.required, rules.horaFinValida]"
-                    variant="outlined"
-                    rounded="xl"
-                    readonly
-                    append-inner-icon="mdi-clock-outline"
-                  />
-                </template>
-
-                <v-time-picker
-                  :model-value="eventForm.horaFin"
-                  format="24hr"
-                  @update:model-value="handleHoraFinSelected"
-                />
-              </v-menu>
+              <v-text-field
+                v-model="eventForm.horaFin"
+                type="time"
+                label="Hora fin"
+                :rules="[rules.required, rules.timeFormat, rules.horaFinValida]"
+                variant="outlined"
+                rounded="xl"
+                prepend-inner-icon="mdi-clock-outline"
+              />
             </v-col>
 
             <v-col cols="12">
@@ -537,7 +495,7 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
               <v-checkbox
                 v-model="eventForm.optional"
                 label="Evento opcional"
-                color="indigo"
+                color="red-darken-3"
                 density="comfortable"
                 hide-details
               />
@@ -558,7 +516,7 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
         </v-btn>
 
         <v-btn
-          color="indigo"
+          color="red-darken-3"
           rounded="xl"
           elevation="0"
           :disabled="!isFormValid"

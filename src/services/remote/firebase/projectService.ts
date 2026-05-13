@@ -25,7 +25,7 @@ export const projectService = {
     return null;
   },
 
-  async createProject(projectData: Omit<Proyecto, 'projectId'>): Promise<string> {
+  async createProject(projectData: Omit<Proyecto, 'projectId' | 'owner'>): Promise<string> {
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error("Debes estar logueado");
 
@@ -43,6 +43,20 @@ export const projectService = {
 
     await addDoc(collection(db, 'proyecto_usuario'), relation);
     return newDoc.id;
+  },
+
+  async addUserToProject(projectId: string, userId: string): Promise<boolean> {
+    const project = await this.getProject(projectId);
+    if (!project) throw new Error('El proyecto no existe');
+
+    const relationRef = collection(db, 'proyecto_usuario');
+    const q = query(relationRef, where('projectId', '==', projectId), where('userId', '==', userId));
+    const snap = await getDocs(q);
+
+    if (!snap.empty) return true;
+
+    await addDoc(relationRef, { projectId, userId } satisfies ProyectoUsuario);
+    return true;
   },
 
   async addEventToProject(projectId: string, eventData: Evento): Promise<void> {

@@ -13,8 +13,11 @@ let map: google.maps.Map | null = null
 let directionsRenderer: google.maps.DirectionsRenderer | null = null
 let markers: google.maps.marker.AdvancedMarkerElement[] = []
 
-const formatHora = (ts?: number) =>
-  ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'
+const formatTimeNumber = (value?: number | null) => {
+  if (value === null || value === undefined) return '--:--'
+  const normalized = String(value).padStart(4, '0')
+  return `${normalized.slice(0, 2)}:${normalized.slice(2, 4)}`
+}
 
 const clearMarkers = () => {
   markers.forEach((marker) => {
@@ -30,7 +33,7 @@ const buildMap = async () => {
   if (!mapRef.value || !props.events.length) return
 
   const first = props.events[0]
-  if (first.lat == null || first.lng == null) return
+  if (!first || first.lat == null || first.lng == null) return
 
   map = new google.maps.Map(mapRef.value, {
     center: { lat: first.lat, lng: first.lng },
@@ -79,21 +82,29 @@ const drawRouteAndMarkers = async () => {
   })
 
   if (validEvents.length === 1) {
-    map.setCenter({ lat: validEvents[0].lat!, lng: validEvents[0].lng! })
+    const onlyEvent = validEvents[0]
+    if (!onlyEvent) return
+    map.setCenter({ lat: onlyEvent.lat!, lng: onlyEvent.lng! })
     map.setZoom(15)
     return
   }
 
   const directionsService = new google.maps.DirectionsService()
 
+  const firstEvent = validEvents[0]
+  if (!firstEvent) return
+
   const origin = {
-    lat: validEvents[0].lat!,
-    lng: validEvents[0].lng!,
+    lat: firstEvent.lat!,
+    lng: firstEvent.lng!,
   }
 
+  const lastEvent = validEvents[validEvents.length - 1]
+  if (!lastEvent) return
+
   const destination = {
-    lat: validEvents[validEvents.length - 1].lat!,
-    lng: validEvents[validEvents.length - 1].lng!,
+    lat: lastEvent.lat!,
+    lng: lastEvent.lng!,
   }
 
   const waypoints = validEvents.slice(1, -1).map((ev) => ({
@@ -144,7 +155,7 @@ watch(
         <div class="event-info">
           <div class="event-name">{{ ev.nombre }}</div>
           <div class="event-time">
-            {{ formatHora(ev.fechaHoraInicio) }} - {{ formatHora(ev.fechaHoraFin) }}
+            {{ formatTimeNumber(ev.horaInicio) }} - {{ formatTimeNumber(ev.horaFin) }}
           </div>
           <div v-if="ev.lugar" class="event-place">
             {{ ev.lugar }}

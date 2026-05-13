@@ -1,138 +1,118 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { auth } from '@/services/remote/firebase/config';
-import { projectService } from '@/services/remote/firebase/projectService';
-import type { Proyecto } from '@/interfaces/models';
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { auth } from '@/services/remote/firebase/config'
+import { projectService } from '@/services/remote/firebase/projectService'
+import type { Proyecto } from '@/interfaces/models'
+import NavBar from '@/components/testing/NavBar.vue'
+import TheFooter from '@/components/testing/TheFooter.vue'
 
-// Componentes
-import NavBar from '@/components/testing/NavBar.vue';
-import TheFooter from '@/components/testing/TheFooter.vue';
-
-const router = useRouter();
-const proyectos = ref<Proyecto[]>([]);
-const loading = ref(true);
+const router = useRouter()
+const proyectos = ref<Proyecto[]>([])
+const loading = ref(true)
+const errorMessage = ref('')
 
 onMounted(async () => {
-  const user = auth.currentUser;
+  const user = auth.currentUser
   if (!user) {
-    router.push('/login');
-    return;
+    router.push('/login')
+    return
   }
 
   try {
-    // Cargamos los proyectos del usuario actual
-    proyectos.value = await projectService.getProjectsByUser(user.uid);
+    proyectos.value = await projectService.getProjectsByUser(user.uid)
   } catch (error) {
-    console.error("Error cargando proyectos:", error);
+    console.error('Error cargando proyectos:', error)
+    errorMessage.value = 'No se pudieron cargar tus viajes. Revisa tu conexión e inténtalo otra vez.'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-});
+})
 
 const irADetalle = (id: string) => {
-  router.push({ name: 'ProjectDetail', params: { id } });
-};
+  router.push({ name: 'ProjectDetail', params: { id } })
+}
 
 const formatFecha = (ts?: number) => {
-  if (!ts) return '---';
-  return new Date(ts).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
-};
+  if (!ts) return 'Sin fecha'
+  return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(ts))
+}
+
+const formatCurrency = (value?: number) =>
+  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value ?? 0)
 </script>
 
 <template>
   <v-app>
     <NavBar />
-    <v-main class="dashboard-bg">
-      <v-container class="py-10">
-
-        <header class="d-flex justify-space-between align-end mb-10" style="margin-bottom: 2rem;">
+    <v-main class="gt-page">
+      <v-container class="dashboard-wrap">
+        <header class="dashboard-header">
           <div>
-            <h1 class="auth-title">Mis Aventuras</h1>
-            <p class="auth-subtitle">Tienes {{ proyectos.length }} viajes planeados</p>
+            <p class="gt-kicker">Panel de viajes</p>
+            <h1 class="gt-title">Mis aventuras</h1>
+            <p class="gt-muted">{{ proyectos.length }} viajes planeados</p>
           </div>
-          <v-btn
-            to="/new-project"
-            color="var(--color-orange)"
-            elevation="0"
-            rounded="lg"
-            size="large"
-            class="create-btn"
-          >
-            <v-icon start>mdi-plus</v-icon>
-            Nuevo Viaje
+
+          <v-btn to="/new-project" class="gt-primary-btn" size="large" prepend-icon="mdi-plus">
+            Nuevo viaje
           </v-btn>
         </header>
 
-        <div v-if="loading" class="text-center py-12">
-          <v-progress-circular indeterminate color="var(--color-orange)" size="64"></v-progress-circular>
+        <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-6">
+          {{ errorMessage }}
+        </v-alert>
+
+        <div v-if="loading" class="loading-state gt-card">
+          <v-progress-circular indeterminate color="red-darken-3" size="48" />
+          <span>Cargando tus viajes...</span>
         </div>
 
         <v-row v-else-if="proyectos.length > 0">
           <v-col
             v-for="proyecto in proyectos"
             :key="proyecto.projectId"
-            cols="12" sm="6" lg="4"
+            cols="12"
+            sm="6"
+            lg="4"
           >
-            <v-card class="project-card" elevation="0" @click="irADetalle(proyecto.projectId)">
+            <v-card class="gt-card project-card" elevation="0" @click="irADetalle(proyecto.projectId)">
               <v-img
-                alt="Imagen de portada del viaje a {{ proyecto.destino }}"
-                :src="proyecto.urlPortada"
-                height="220"
+                :alt="`Imagen de portada del viaje a ${proyecto.destino}`"
+                :src="proyecto.urlPortada || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=900&auto=format&fit=crop'"
+                height="210"
                 cover
-                class="align-end text-white"
-              >
-                <div class="card-overlay pa-4">
-                  <v-chip size="x-small" color="var(--color-orange)" class="mb-2 font-weight-bold" label>
+              />
+
+              <v-card-text class="project-body">
+                <div class="project-topline">
+                  <v-chip size="small" color="red-darken-3" variant="tonal">
                     {{ proyecto.destino }}
                   </v-chip>
-                  <h3 class="text-h5 font-weight-black">{{ proyecto.descripcion }}</h3>
-                </div>
-              </v-img>
-
-              <v-card-text class="pa-5 bg-white">
-                <div class="d-flex justify-space-between align-center mb-4">
-                  <div class="d-flex align-center">
-                    <v-icon size="small" color="grey-darken-1" class="mr-1">mdi-calendar-range</v-icon>
-                    <span class="text-caption font-weight-bold text-grey-darken-2">
-                      {{ formatFecha(proyecto.fechaInicio) }} - {{ formatFecha(proyecto.fechaFin) }}
-                    </span>
-                  </div>
-                  <div class="text-caption font-weight-black text-indigo">
-                    ${{ proyecto.presupuesto }}
-                  </div>
+                  <strong>{{ formatCurrency(proyecto.presupuesto) }}</strong>
                 </div>
 
-                <p class="project-desc text-truncate text-body-2">
-                  {{ proyecto.descripcion || 'Sin descripción disponible para este viaje.' }}
-                </p>
+                <h2>{{ proyecto.descripcion || proyecto.destino }}</h2>
+                <p>{{ formatFecha(proyecto.fechaInicio) }} - {{ formatFecha(proyecto.fechaFin) }}</p>
               </v-card-text>
 
-              <v-divider></v-divider>
-
-              <v-card-actions class="pa-4 bg-white justify-end">
-                <v-btn variant="text" color="black" icon="mdi-share-variant" size="small"></v-btn>
-                <v-btn variant="flat" color="black" rounded="lg" class="text-capitalize px-4">
-                  Ver Itinerario
+              <v-card-actions class="project-actions">
+                <v-btn variant="text" color="red-darken-3" append-icon="mdi-arrow-right">
+                  Ver itinerario
                 </v-btn>
               </v-card-actions>
             </v-card>
           </v-col>
         </v-row>
 
-        <v-row v-else justify="center">
-          <v-col cols="12" md="6" class="text-center py-12">
-            <v-avatar size="120" color="var(--color-beige)" class="mb-6 border-black">
-              <v-icon size="60" color="black">mdi-map-marker-off-outline</v-icon>
-            </v-avatar>
-            <h2 class="text-h5 font-weight-bold mb-2">Aún no tienes viajes</h2>
-            <p class="text-grey-darken-1 mb-6">Comienza a planificar tu próxima aventura ahora mismo.</p>
-            <v-btn to="/new-project" color="var(--color-orange)" rounded="xl" size="x-large" elevation="0">
-              Crear mi primer viaje
-            </v-btn>
-          </v-col>
-        </v-row>
-
+        <section v-else class="empty-state gt-card">
+          <v-icon icon="mdi-map-marker-plus-outline" size="64" color="red-darken-3" />
+          <h2>Aún no tienes viajes</h2>
+          <p>Crea tu primer proyecto y empieza a organizar destino, fechas y actividades.</p>
+          <v-btn to="/new-project" class="gt-primary-btn" size="large" prepend-icon="mdi-plus">
+            Crear mi primer viaje
+          </v-btn>
+        </section>
       </v-container>
     </v-main>
     <TheFooter />
@@ -140,63 +120,87 @@ const formatFecha = (ts?: number) => {
 </template>
 
 <style scoped>
-.dashboard-bg {
-  background-color: #ebebeb; /* Consistente con el login/register */
-  min-height: 100vh;
+.dashboard-wrap {
+  width: min(1180px, calc(100% - 24px));
+  padding-block: 3rem 4rem;
 }
 
-/* Tipografía audaz tipo Footer */
-.auth-title {
-  font-size: clamp(2rem, 4vw, 3rem);
-  font-weight: 800;
-  line-height: 1.1;
-  color: black;
+.dashboard-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
 }
 
-.auth-subtitle {
-  font-size: 1.15rem;
-  color: rgba(0, 0, 0, 0.45);
+.dashboard-header h1 {
+  font-size: clamp(2.4rem, 6vw, 4.2rem);
 }
 
-/* Tarjeta de Proyecto con bordes marcados */
+.loading-state,
+.empty-state {
+  min-height: 300px;
+  display: grid;
+  place-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.empty-state h2 {
+  color: var(--gt-text);
+  font-weight: 850;
+}
+
+.empty-state p {
+  max-width: 480px;
+  color: var(--gt-muted);
+}
+
 .project-card {
-  border: 2px solid black !important;
-  border-radius: 20px !important;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .project-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 10px 10px 0px rgba(0,0,0,1) !important; /* Efecto Neobrutalista */
+  transform: translateY(-4px);
+  box-shadow: var(--gt-shadow-md) !important;
 }
 
-.card-overlay {
-  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
-  width: 100%;
+.project-body {
+  padding: 1.25rem !important;
 }
 
-.project-desc {
-  color: #666;
-  max-width: 100%;
+.project-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
 }
 
-.create-btn {
-  border: 2px solid black !important;
-  font-weight: 800 !important;
-  text-transform: none !important;
+.project-body h2 {
+  min-height: 3.2rem;
+  color: var(--gt-text);
+  font-size: 1.2rem;
+  font-weight: 850;
+  line-height: 1.25;
 }
 
-.border-black {
-  border: 2px solid black !important;
+.project-body p {
+  margin-top: 0.6rem;
+  color: var(--gt-muted);
 }
 
-.bg-white {
-  background-color: white !important;
+.project-actions {
+  padding: 0 1rem 1rem !important;
 }
 
-.v-btn {
-  padding: 1rem;
+@media (max-width: 700px) {
+  .dashboard-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 </style>

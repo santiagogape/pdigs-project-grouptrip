@@ -11,37 +11,26 @@ const emit = defineEmits<{
   (event: 'cambios', value: boolean): void
 }>()
 
-interface NewProjectFormState {
-  destino: string
-  fechaInicio: string
-  fechaFin: string
-  nombre: string
-  presupuesto: number
-  descripcion: string
-  urlPortada: string
-}
-
+const router = useRouter()
 const aiPrompt = ref('')
 const isGeneratingAI = ref(false)
+const isCreating = ref(false)
 const aiError = ref('')
+const submitError = ref('')
+const hasUnsavedChanges = ref(false)
 
-const form = reactive<NewProjectFormState>({
+const form = reactive({
   destino: '',
   fechaInicio: '',
   fechaFin: '',
   nombre: '',
   presupuesto: 2000,
   descripcion: '',
-  urlPortada: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800'
+  urlPortada: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=900&auto=format&fit=crop'
 })
 
-const hasUnsavedChanges = ref(false)
-
 const markAsDirty = (): void => {
-  if (hasUnsavedChanges.value) {
-    return
-  }
-
+  if (hasUnsavedChanges.value) return
   hasUnsavedChanges.value = true
   emit('cambios', true)
 }
@@ -51,19 +40,8 @@ const resetDirtyState = (): void => {
   emit('cambios', false)
 }
 
-watch(
-  form,
-  () => {
-    markAsDirty()
-  },
-  { deep: true }
-)
-
-watch(aiPrompt, () => {
-  markAsDirty()
-})
-
-const router = useRouter()
+watch(form, markAsDirty, { deep: true })
+watch(aiPrompt, markAsDirty)
 
 const formatDateForInput = (date: Date): string => {
   const year = date.getFullYear()
@@ -78,14 +56,12 @@ const applyTripDuration = (durationDays: number): void => {
   start.setHours(0, 0, 0, 0)
   const end = new Date(start)
   end.setDate(end.getDate() + safeDuration - 1)
-
   form.fechaInicio = formatDateForInput(start)
   form.fechaFin = formatDateForInput(end)
 }
 
-const getLastDayOfMonth = (year: number, monthIndex: number): Date => {
-  return new Date(year, monthIndex + 1, 0)
-}
+const getLastDayOfMonth = (year: number, monthIndex: number): Date =>
+  new Date(year, monthIndex + 1, 0)
 
 const inferDatesFromPrompt = (prompt: string): { fechaInicio?: string; fechaFin?: string } => {
   const normalizedPrompt = prompt.toLowerCase()
@@ -95,11 +71,7 @@ const inferDatesFromPrompt = (prompt: string): { fechaInicio?: string; fechaFin?
   if (normalizedPrompt.includes('proximo mes') || normalizedPrompt.includes('próximo mes')) {
     const start = new Date(currentYear, today.getMonth() + 1, 1)
     const end = getLastDayOfMonth(start.getFullYear(), start.getMonth())
-
-    return {
-      fechaInicio: formatDateForInput(start),
-      fechaFin: formatDateForInput(end)
-    }
+    return { fechaInicio: formatDateForInput(start), fechaFin: formatDateForInput(end) }
   }
 
   const monthMap: Record<string, number> = {
@@ -119,44 +91,34 @@ const inferDatesFromPrompt = (prompt: string): { fechaInicio?: string; fechaFin?
   }
 
   for (const [monthName, monthIndex] of Object.entries(monthMap)) {
-    if (!normalizedPrompt.includes(`en ${monthName}`) && !normalizedPrompt.includes(`para ${monthName}`) && !normalizedPrompt.includes(`de ${monthName}`)) {
+    if (
+      !normalizedPrompt.includes(`en ${monthName}`) &&
+      !normalizedPrompt.includes(`para ${monthName}`) &&
+      !normalizedPrompt.includes(`de ${monthName}`)
+    ) {
       continue
     }
 
-    let year = currentYear
-    if (monthIndex < today.getMonth()) {
-      year += 1
-    }
-
+    const year = monthIndex < today.getMonth() ? currentYear + 1 : currentYear
     const start = new Date(year, monthIndex, 1)
     const end = getLastDayOfMonth(year, monthIndex)
-
-    return {
-      fechaInicio: formatDateForInput(start),
-      fechaFin: formatDateForInput(end)
-    }
+    return { fechaInicio: formatDateForInput(start), fechaFin: formatDateForInput(end) }
   }
 
   return {}
 }
 
 const isValidIsoDate = (value?: string): value is string => {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false
-  }
-
-  const parsed = new Date(`${value}T00:00:00`)
-  return !Number.isNaN(parsed.getTime())
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  return !Number.isNaN(new Date(`${value}T00:00:00`).getTime())
 }
 
-const buildProjectData = (): Omit<Proyecto, 'projectId' | 'owner'> => {
-  return {
-    ...form,
-    fechaInicio: new Date(form.fechaInicio).getTime(),
-    fechaFin: new Date(form.fechaFin).getTime(),
-    eventos: []
-  }
-}
+const buildProjectData = (): Omit<Proyecto, 'projectId' | 'owner'> => ({
+  ...form,
+  fechaInicio: new Date(form.fechaInicio).getTime(),
+  fechaFin: new Date(form.fechaFin).getTime(),
+  eventos: []
+})
 
 const handleGenerateWithAI = async (): Promise<void> => {
   if (!aiPrompt.value.trim()) {
@@ -188,7 +150,6 @@ const handleGenerateWithAI = async (): Promise<void> => {
       form.fechaFin = suggestion.fechaFin
     } else if (isValidIsoDate(suggestion.fechaInicio)) {
       form.fechaInicio = suggestion.fechaInicio
-
       const startDate = new Date(`${suggestion.fechaInicio}T00:00:00`)
       const endDate = new Date(startDate)
       endDate.setDate(endDate.getDate() + Math.max(1, suggestion.duracionDias) - 1)
@@ -205,309 +166,161 @@ const handleGenerateWithAI = async (): Promise<void> => {
 }
 
 const handleCreateProject = async (): Promise<void> => {
-  const projectData = buildProjectData()
+  submitError.value = ''
+
+  if (!form.destino || !form.nombre || !form.fechaInicio || !form.fechaFin) {
+    submitError.value = 'Completa destino, nombre y fechas para crear el viaje.'
+    return
+  }
 
   try {
+    isCreating.value = true
+    const projectData = buildProjectData()
     const newId = await projectService.createProject(projectData)
-
-    if (newId) {
-      resetDirtyState()
-      emit('crear', projectData)
-      router.push({ name: 'ProjectDetail', params: { id: newId } })
-    }
+    resetDirtyState()
+    emit('crear', projectData)
+    router.push({ name: 'ProjectDetail', params: { id: newId } })
   } catch (error) {
     console.error('Error al crear el proyecto:', error)
-    alert('Hubo un error al crear el viaje')
+    submitError.value = 'Hubo un error al crear el viaje. Revisa los datos e inténtalo otra vez.'
+  } finally {
+    isCreating.value = false
   }
 }
 </script>
 
 <template>
-  <div class="setting-form-container">
-    <header class="setting-form-header">
-      <h2 class="setting-form-title">Crear Nuevo Viaje</h2>
-      <p class="setting-form-subtitle">Completa los datos manualmente y, si quieres, usa IA como apoyo para autocompletar algunos campos</p>
+  <div class="project-form gt-container">
+    <header class="project-form-header">
+      <p class="gt-kicker">Nuevo proyecto</p>
+      <h2 class="gt-title">Crear nuevo viaje</h2>
+      <p class="gt-muted">Completa los datos manualmente o usa IA como apoyo para aterrizar la primera versión.</p>
     </header>
 
-    <form @submit.prevent="handleCreateProject" class="setting-form">
-      <section class="setting-form-main-panel">
-        <div class="setting-form-group">
-          <label class="setting-form-label">Destino *</label>
-          <input v-model="form.destino" type="text" placeholder="ej. París, Tokio, Barcelona..." required class="setting-form-input" />
-        </div>
+    <v-form @submit.prevent="handleCreateProject">
+      <v-row>
+        <v-col cols="12" md="8">
+          <v-card class="gt-card pa-6" elevation="0">
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-text-field v-model="form.destino" label="Destino" placeholder="París, Tokio, Barcelona..." variant="outlined" prepend-inner-icon="mdi-map-marker-outline" required />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field v-model="form.nombre" label="Nombre del viaje" placeholder="Aventura en París" variant="outlined" prepend-inner-icon="mdi-flag-outline" required />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field v-model="form.fechaInicio" type="date" label="Fecha de inicio" variant="outlined" required />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field v-model="form.fechaFin" type="date" label="Fecha de fin" :min="form.fechaInicio" variant="outlined" required />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field v-model.number="form.presupuesto" type="number" min="0" label="Presupuesto" prefix="€" variant="outlined" />
+              </v-col>
+              <v-col cols="12">
+                <v-textarea v-model="form.descripcion" rows="4" label="Descripción" placeholder="Describe el tipo de viaje, ritmo y prioridades..." variant="outlined" />
+              </v-col>
+              <v-col cols="12">
+                <v-text-field v-model="form.urlPortada" label="URL de imagen" variant="outlined" prepend-inner-icon="mdi-image-outline" />
+              </v-col>
+            </v-row>
+          </v-card>
+        </v-col>
 
-        <div class="setting-form-dates">
-          <div class="setting-form-group">
-            <label class="setting-form-label">Fecha de inicio *</label>
-            <input v-model="form.fechaInicio" type="date" required class="setting-form-input" />
-          </div>
-          <div class="setting-form-group">
-            <label class="setting-form-label">Fecha de fin *</label>
-            <input v-model="form.fechaFin" type="date" :min="form.fechaInicio" required class="setting-form-input" />
-          </div>
-        </div>
+        <v-col cols="12" md="4">
+          <v-card class="gt-card preview-card" elevation="0">
+            <v-img :src="form.urlPortada" alt="Vista previa del viaje" height="210" cover />
+            <div class="preview-copy">
+              <v-chip color="red-darken-3" variant="tonal" size="small">{{ form.destino || 'Destino' }}</v-chip>
+              <h3>{{ form.nombre || 'Nombre del viaje' }}</h3>
+              <p>{{ form.descripcion || 'La descripción aparecerá aquí mientras completas el formulario.' }}</p>
+            </div>
+          </v-card>
 
-        <div class="setting-form-group">
-          <label class="setting-form-label">Nombre del viaje *</label>
-          <input v-model="form.nombre" type="text" placeholder="ej. Aventura en París" required class="setting-form-input" />
-        </div>
+          <v-card class="gt-card ai-card mt-4" elevation="0">
+            <v-chip color="yellow-darken-3" variant="tonal" size="small" class="mb-3">Opcional</v-chip>
+            <h3>Ayuda con IA</h3>
+            <p class="gt-muted">Describe tu idea y la IA sugerirá destino, presupuesto y duración.</p>
+            <v-textarea
+              v-model="aiPrompt"
+              rows="4"
+              class="mt-4"
+              label="Prompt para IA"
+              placeholder="Viaje de 6 días en Japón para 2 personas, presupuesto medio y plan cultural"
+              variant="outlined"
+            />
+            <v-alert v-if="aiError" type="warning" variant="tonal" density="compact" class="mb-3">
+              {{ aiError }}
+            </v-alert>
+            <v-btn
+              type="button"
+              class="gt-secondary-btn"
+              variant="outlined"
+              color="red-darken-3"
+              prepend-icon="mdi-auto-fix"
+              :loading="isGeneratingAI"
+              @click="handleGenerateWithAI"
+            >
+              Rellenar con IA
+            </v-btn>
+          </v-card>
+        </v-col>
+      </v-row>
 
-        <div class="setting-form-group">
-          <label class="setting-form-label">Presupuesto</label>
-          <input v-model.number="form.presupuesto" type="number" class="setting-form-input" />
-        </div>
+      <v-alert v-if="submitError" type="error" variant="tonal" class="mt-5">
+        {{ submitError }}
+      </v-alert>
 
-        <div class="setting-form-group">
-          <label class="setting-form-label">Descripción</label>
-          <textarea v-model="form.descripcion" rows="3" placeholder="Describe tu viaje..." class="setting-form-textarea"></textarea>
-        </div>
-
-        <div class="setting-form-group setting-form-image-group">
-          <div>
-            <label class="setting-form-label">URL de imagen</label>
-            <input v-model="form.urlPortada" type="text" class="setting-form-input" />
-          </div>
-          <div class="setting-form-preview-wrap">
-            <img :src="form.urlPortada" alt="Preview" class="setting-form-image" />
-          </div>
-        </div>
-      </section>
-
-      <section class="setting-form-ai-panel">
-        <div class="setting-form-ai-header">
-          <span class="setting-form-ai-badge">Opcional</span>
-          <div>
-            <h3 class="setting-form-ai-title">Ayuda con IA</h3>
-            <p class="setting-form-ai-copy">Si tienes una idea general, descríbela aquí y la IA te sugiere destino, presupuesto y duración.</p>
-          </div>
-        </div>
-
-        <div class="setting-form-group">
-          <label class="setting-form-label">Prompt para IA</label>
-          <textarea
-            v-model="aiPrompt"
-            rows="3"
-            placeholder="Ej: viaje de 6 días en Japón para 2 personas con presupuesto medio y plan cultural"
-            class="setting-form-textarea"
-          ></textarea>
-        </div>
-
-        <div class="setting-form-ai-actions">
-          <button type="button" class="setting-form-ia-button" @click="handleGenerateWithAI" :disabled="isGeneratingAI">
-            <span>✨</span> {{ isGeneratingAI ? 'Generando...' : 'Rellenar con IA' }}
-          </button>
-        </div>
-
-        <p v-if="aiError" class="setting-form-error">{{ aiError }}</p>
-      </section>
-
-      <div class="setting-form-buttons">
-        <button @click="emit('cancelar')" type="button" class="setting-form-button-cancel">
+      <div class="form-actions">
+        <v-btn type="button" class="gt-secondary-btn" variant="text" @click="emit('cancelar')">
           Cancelar
-        </button>
-        <button type="submit" class="setting-form-button-submit">
-          Crear Viaje
-        </button>
+        </v-btn>
+        <v-btn type="submit" class="gt-primary-btn" prepend-icon="mdi-check" :loading="isCreating">
+          Crear viaje
+        </v-btn>
       </div>
-    </form>
+    </v-form>
   </div>
 </template>
 
 <style scoped>
-.setting-form-container {
-  width: auto;
-  margin: 40px 20%;
-  padding: 24px;
-  background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+.project-form {
+  padding-block: 3rem 4rem;
 }
 
-.setting-form-header {
-  margin-bottom: 20px;
+.project-form-header {
+  margin-bottom: 1.5rem;
 }
 
-.setting-form-title {
-  margin: 0;
-  font-size: 24px;
-  color: #1f2937;
+.project-form-header h2 {
+  font-size: clamp(2.1rem, 5vw, 3.8rem);
 }
 
-.setting-form-subtitle {
-  margin-top: 6px;
-  font-size: 14px;
-  color: #6b7280;
+.preview-card {
+  overflow: hidden;
 }
 
-.setting-form-main-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.preview-copy,
+.ai-card {
+  padding: 1.25rem;
 }
 
-.setting-form-ai-panel {
-  margin-top: 18px;
-  padding: 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  background: #f9fafb;
+.preview-copy h3,
+.ai-card h3 {
+  margin-top: 0.75rem;
+  color: var(--gt-text);
+  font-weight: 850;
 }
 
-.setting-form-ai-header {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  margin-bottom: 12px;
+.preview-copy p {
+  margin-top: 0.5rem;
+  color: var(--gt-muted);
 }
 
-.setting-form-ai-badge {
-  display: inline-flex;
-  width: fit-content;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: #eef2ff;
-  color: #4f46e5;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  flex-shrink: 0;
-}
-
-.setting-form-ai-title {
-  margin: 0;
-  font-size: 16px;
-  color: #111827;
-}
-
-.setting-form-ai-copy {
-  margin: 4px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #6b7280;
-}
-
-.setting-form-label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 500;
-  color: #374151;
-}
-
-.setting-form-input,
-.setting-form-textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
-  outline: none;
-  font-size: 14px;
-  transition: all 0.2s ease;
-}
-
-.setting-form-input:focus,
-.setting-form-textarea:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-}
-
-.setting-form-dates {
-  display: flex;
-  gap: 12px;
-}
-
-.setting-form-dates .setting-form-group {
-  flex: 1;
-}
-
-.setting-form-ia-button {
-  width: auto;
-  align-self: flex-start;
-  background: #ffffff;
-  color: #4f46e5;
-  border: 1px solid #c7d2fe;
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  margin: 0;
-}
-
-.setting-form-ia-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(79, 70, 229, 0.12);
-}
-
-.setting-form-ia-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.setting-form-ai-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-}
-
-.setting-form-error {
-  margin: 4px 0 10px;
-  color: #b91c1c;
-  font-size: 13px;
-}
-
-.setting-form-image-group {
-  display: block;
-  gap: 12px;
-  align-items: center;
-}
-
-.setting-form-preview-wrap {
-  margin-top: 10px;
-}
-
-.setting-form-image {
-  width: 100%;
-  max-height: 200px;
-  border-radius: 12px;
-  object-fit: cover;
-  border: 1px solid #e5e7eb;
-}
-
-.setting-form-buttons {
+.form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.setting-form-button-cancel {
-  background: #e5e7eb;
-  color: #374151;
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-
-.setting-form-button-cancel:hover {
-  background: #d1d5db;
-}
-
-.setting-form-button-submit {
-  background: #10b981;
-  color: white;
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-
-.setting-form-button-submit:hover {
-  background: #059669;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
 }
 </style>

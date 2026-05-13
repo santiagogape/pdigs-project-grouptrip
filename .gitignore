@@ -43,3 +43,4 @@ __screenshots__/
 src/services/remote/firebase/config.ts
 
 .env
+grouptrip-video/

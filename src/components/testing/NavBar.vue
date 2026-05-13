@@ -1,100 +1,126 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute, RouterLink } from 'vue-router'
+import { auth } from '@/services/remote/firebase/config'
+
+const route = useRoute()
+
 const navItems = [
-  { label: 'Mis Proyectos', to: '/dashboard' },
-  { label: 'Nuevo Proyecto', to: '/new-project' },
+  { label: 'Mis viajes', to: '/dashboard', icon: 'mdi-view-dashboard-outline' },
+  { label: 'Nuevo viaje', to: '/new-project', icon: 'mdi-plus-circle-outline' },
 ]
+
+const isLoggedIn = computed(() => !!auth.currentUser)
 </script>
 
 <template>
-  <v-app-bar app flat class="nav-bar px-4" height="92">
-    <div class="nav-left">
-      <RouterLink to="/" class="logo-link" aria-label="Ir al inicio">
-        <img src="@/assets/logo/icon.small.png" alt="Logo" height="60" width="140" contain />
+  <v-app-bar app flat class="nav-bar" height="76">
+    <div class="nav-shell">
+      <RouterLink to="/" class="brand-link" aria-label="Ir al inicio">
+        <img src="@/assets/logo/icon.small.png" alt="GroupTrip" class="brand-logo" />
       </RouterLink>
 
-      <div class="nav-links">
+      <nav class="nav-links" aria-label="Navegación principal">
         <RouterLink
           v-for="item in navItems"
-          :key="item.label"
+          :key="item.to"
           :to="item.to"
           class="nav-router-link"
         >
-          <v-btn class="nav-btn" rounded="lg" elevation="0">
+          <v-btn
+            :class="['nav-btn', { 'nav-btn-active': route.path === item.to }]"
+            :prepend-icon="item.icon"
+            variant="text"
+          >
             {{ item.label }}
           </v-btn>
         </RouterLink>
-      </div>
-    </div>
+      </nav>
 
-    <template #append>
-      <RouterLink to="/login" class="profile-link" aria-label="Perfil de usuario">
-        <v-avatar size="68" class="profile-avatar">
-          <v-icon size="40">mdi-account-outline</v-icon>
+      <RouterLink
+        :to="isLoggedIn ? '/dashboard' : '/login'"
+        class="profile-link"
+        :aria-label="isLoggedIn ? 'Ir al panel' : 'Iniciar sesión'"
+      >
+        <v-avatar size="44" class="profile-avatar">
+          <v-icon size="24">mdi-account-outline</v-icon>
         </v-avatar>
       </RouterLink>
-    </template>
+    </div>
   </v-app-bar>
 </template>
 
 <style scoped>
 .nav-bar {
-  background-color: white;
-  border-top: 2px solid var(--color-Molten-Orange);
-  border-left: 2px solid var(--color-Molten-Orange);
-  border-right: 2px solid var(--color-Molten-Orange);
-  border-bottom: 2px solid var(--color-Molten-Orange);
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 20px;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-bottom: 1px solid var(--gt-border);
+  backdrop-filter: blur(14px);
 }
 
-.nav-left {
+.nav-shell {
+  width: min(1180px, calc(100% - 28px));
+  margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 2rem;
-  width: 100%;
+  gap: 1rem;
 }
 
-.logo-link,
+.brand-link,
 .profile-link,
 .nav-router-link {
-  text-decoration: none;
   color: inherit;
+  text-decoration: none;
+}
+
+.brand-logo {
+  width: 118px;
+  height: auto;
+  display: block;
 }
 
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-left: auto;
 }
 
 .nav-btn {
-  background-color: var(--color-Oxblood);
-  color: white;
-  font-weight: 700;
-  text-transform: none;
-  letter-spacing: 0;
-  padding-inline: 1.1rem;
+  color: var(--gt-muted) !important;
+  border-radius: 999px !important;
+  font-weight: 750 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.nav-btn-active {
+  color: var(--gt-primary-dark) !important;
+  background: rgba(15, 118, 110, 0.1) !important;
 }
 
 .profile-avatar {
-  border: 3px solid var(--color-Oxblood);
-  color: var(--color-Oxblood);
-  background-color: white;
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  color: var(--gt-primary-dark);
+  background: #ecfdf5;
 }
 
-@media (max-width: 760px) {
-  .nav-left {
-    gap: 1rem;
-  }
-
-  .nav-links {
+@media (max-width: 720px) {
+  .nav-shell {
+    width: min(100% - 20px, 1180px);
     gap: 0.5rem;
   }
 
+  .brand-logo {
+    width: 96px;
+  }
+
   .nav-btn {
-    font-size: 0.85rem;
-    padding-inline: 0.8rem;
+    min-width: 42px !important;
+    padding-inline: 0.65rem !important;
+  }
+
+  .nav-btn :deep(.v-btn__content) {
+    display: none;
   }
 }
 </style>

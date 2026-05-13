@@ -52,8 +52,11 @@ const addEvent = async () => {
   try {
     const eventData: Evento = {
       ...newEvent.value,
-      fechaHoraInicio: Date.now(),
-      fechaHoraFin: Date.now() + 3600,
+      fechaInicio: Number(new Date().toISOString().slice(0, 10).replace(/-/g, '')),
+      fechaFin: Number(new Date().toISOString().slice(0, 10).replace(/-/g, '')),
+      horaInicio: 900,
+      horaFin: 1000,
+      optional: false,
       gastos: []
     };
     await projectService.addEventToProject(activeProjectId.value, eventData);

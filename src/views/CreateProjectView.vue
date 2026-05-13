@@ -42,13 +42,11 @@ onBeforeRouteLeave(() => {
 <template>
   <v-app>
     <NavBar />
-    <v-main>
-      <v-container class="mt-5" fluid>
-        <NewProjectForm
-          @cambios="handleDirtyChange"
-          @cancelar="handleCancel"
-        />
-      </v-container>
+    <v-main class="gt-page">
+      <NewProjectForm
+        @cambios="handleDirtyChange"
+        @cancelar="handleCancel"
+      />
     </v-main>
     <TheFooter />
   </v-app>

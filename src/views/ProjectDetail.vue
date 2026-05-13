@@ -19,6 +19,7 @@ const projectId = route.params.id as string;
 const showShareModal = ref(false);
 const isInitializingTrip = ref(false);
 const initializationError = ref('');
+const actionError = ref('');
 const shareLink = computed(() => `${window.location.origin}/share/${projectId}`);
 
 // Estados reactivos
@@ -319,7 +320,7 @@ const calendarEvents = computed(() => {
     title: ev.nombre,
     start: eventoStartDate(ev),
     end: eventoEndDate(ev),
-    color: 'indigo',
+    color: 'orange',
     allDay: false,
   }))
 })
@@ -513,8 +514,9 @@ const closeEventModal = (): void => {
 
 const saveEvent = async (event: Evento) => {
   try {
+    actionError.value = '';
     if (!projectId) {
-      alert('ID de proyecto no válido');
+      actionError.value = 'ID de proyecto no válido.';
       return;
     }
 
@@ -528,7 +530,7 @@ const saveEvent = async (event: Evento) => {
     eventoSeleccionado.value = null;
   } catch (e) {
     console.error('Error guardando evento:', e);
-    alert('No se pudo guardar el evento');
+    actionError.value = 'No se pudo guardar el evento.';
   }
 };
 
@@ -536,14 +538,15 @@ const deleteEvent = async (event: Evento) => {
   if (!confirm(`¿Eliminar evento "${event.nombre}"?`)) return;
 
   try {
+    actionError.value = '';
     if (!projectId || !event.id) {
-      alert('ID de proyecto o evento no válido');
+      actionError.value = 'ID de proyecto o evento no válido.';
       return;
     }
     await projectService.deleteEvent(projectId, event.id);
   } catch (e) {
     console.error('Error eliminando evento:', e);
-    alert('No se pudo eliminar el evento');
+    actionError.value = 'No se pudo eliminar el evento.';
   }
 };
 
@@ -558,41 +561,39 @@ onBeforeRouteLeave(() => {
   <v-app>
     <NavBar />
 
-    <v-main class="dashboard-bg">
+    <v-main class="gt-page project-page">
       <v-container v-if="loading" class="fill-height justify-center">
-        <v-progress-circular indeterminate color="indigo" />
+        <v-progress-circular indeterminate color="red-darken-3" />
       </v-container>
 
-      <v-container v-else-if="proyecto" class="py-10">
-        <header class="d-flex justify-space-between align-center mb-8">
+      <v-container v-else-if="proyecto" class="py-10 project-wrap">
+        <header class="project-header">
           <div>
-            <h1 class="text-h4 font-weight-black color-navy">{{ proyecto.destino }}</h1>
-            <p class="text-subtitle-1 text-grey-darken-1">{{ proyecto.descripcion }}</p>
+            <p class="gt-kicker">Itinerario compartido</p>
+            <h1 class="gt-title">{{ proyecto.destino }}</h1>
+            <p class="gt-muted">{{ proyecto.descripcion }}</p>
           </div>
 
-          <div>
+          <div class="project-header-actions">
             <v-btn
-              class="px-6"
-              style="margin-right: 1rem;"
-              elevation="0"
-              rounded="xl"
-              color="#4caf50"
+              class="gt-secondary-btn"
               prepend-icon="mdi-export-variant"
-              variant="flat"
+              variant="outlined"
+              color="red-darken-3"
               @click="showShareModal = true"
             >
-              Share
+              Compartir
             </v-btn>
 
-            <v-btn color="indigo" rounded="xl" elevation="0" class="px-6">
-              Dashboard
+            <v-btn color="red-darken-3" class="gt-primary-btn" to="/dashboard" elevation="0" prepend-icon="mdi-view-dashboard-outline">
+              Panel
             </v-btn>
           </div>
         </header>
 
         <v-row>
           <v-col cols="12" md="8" class="card-container">
-            <v-card class="custom-card mb-6">
+            <v-card class="gt-card mb-6">
               <v-card-text class="pa-6">
                 <v-row>
                   <v-col cols="4">
@@ -608,20 +609,20 @@ onBeforeRouteLeave(() => {
                   <v-col cols="4">
                     <span class="label-text">Estado</span>
                     <div>
-                      <v-chip size="small" color="success" variant="flat">● Activo</v-chip>
+                      <v-chip size="small" color="success" variant="tonal" prepend-icon="mdi-circle-medium">Activo</v-chip>
                     </div>
                   </v-col>
                 </v-row>
               </v-card-text>
             </v-card>
 
-            <v-card class="custom-card card-container mb-6">
-              <v-card-title class="pa-6 font-weight-bold d-flex justify-space-between align-center">
+            <v-card class="gt-card card-container mb-6">
+              <v-card-title class="pa-6 font-weight-bold activities-title">
                 <span>Actividades</span>
 
                 <div class="d-flex ga-2">
                   <v-btn
-                    color="grey-darken-2"
+                    color="red-darken-3"
                     variant="tonal"
                     rounded="xl"
                     elevation="0"
@@ -633,7 +634,7 @@ onBeforeRouteLeave(() => {
                   </v-btn>
 
                   <v-btn
-                    color="indigo"
+                    color="red-darken-3"
                     rounded="xl"
                     elevation="0"
                     prepend-icon="mdi-plus"
@@ -647,6 +648,12 @@ onBeforeRouteLeave(() => {
               <v-card-text v-if="initializationError" class="px-6 pb-0">
                 <v-alert type="warning" variant="tonal" density="compact">
                   {{ initializationError }}
+                </v-alert>
+              </v-card-text>
+
+              <v-card-text v-if="actionError" class="px-6 pb-0">
+                <v-alert type="error" variant="tonal" density="compact">
+                  {{ actionError }}
                 </v-alert>
               </v-card-text>
 
@@ -767,10 +774,10 @@ onBeforeRouteLeave(() => {
                     </v-btn>
                   </div>
                 </div>
-                <v-tabs v-model="activityTab" color="indigo" grow>
-                  <v-tab value="list">Lista</v-tab>
-                  <v-tab value="calendar">Calendario</v-tab>
-                  <v-tab value="map">Mapa</v-tab>
+                <v-tabs v-model="activityTab" color="red-darken-3" grow>
+                  <v-tab value="list" prepend-icon="mdi-format-list-bulleted">Lista</v-tab>
+                  <v-tab value="calendar" prepend-icon="mdi-calendar-month-outline">Calendario</v-tab>
+                  <v-tab value="map" prepend-icon="mdi-map-outline">Mapa</v-tab>
                 </v-tabs>
 
                 <v-window v-model="activityTab" class="mt-4">
@@ -785,13 +792,13 @@ onBeforeRouteLeave(() => {
                       <v-timeline-item
                         v-for="(ev, i) in filteredEventos"
                         :key="ev.id ?? i"
-                        dot-color="indigo-lighten-4"
+                        dot-color="orange-lighten-4"
                         size="x-small"
                         style="width: 100%;"
                       >
                         <div class="evento-item">
                           <div class="evento-main">
-                            <div class="evento-fecha text-caption font-weight-bold text-indigo">
+                            <div class="evento-fecha text-caption font-weight-bold text-red-darken-3">
                               {{ formatRangoEvento(ev) }}
                             </div>
 
@@ -836,7 +843,8 @@ onBeforeRouteLeave(() => {
                       </v-timeline-item>
                     </v-timeline>
 
-                    <div v-else class="text-center py-4 text-grey">
+                    <div v-else class="empty-inline">
+                      <v-icon icon="mdi-calendar-blank-outline" size="42" />
                       No hay actividades programadas
                     </div>
                   </v-window-item>
@@ -849,7 +857,8 @@ onBeforeRouteLeave(() => {
                       />
                     </div>
 
-                    <div v-else class="text-center py-4 text-grey">
+                    <div v-else class="empty-inline">
+                      <v-icon icon="mdi-calendar-remove-outline" size="42" />
                       No hay actividades para mostrar en el calendario
                     </div>
                   </v-window-item>
@@ -859,7 +868,8 @@ onBeforeRouteLeave(() => {
                       <EventsMapPanel :events="mapEvents" />
                     </div>
 
-                    <div v-else class="text-center py-4 text-grey">
+                    <div v-else class="empty-inline">
+                      <v-icon icon="mdi-map-marker-off-outline" size="42" />
                       No hay actividades con coordenadas para mostrar en el mapa
                     </div>
                   </v-window-item>
@@ -869,7 +879,7 @@ onBeforeRouteLeave(() => {
           </v-col>
 
           <v-col cols="12" md="4" class="card-container">
-            <v-card class="custom-card mb-6">
+            <v-card class="gt-card mb-6">
               <v-card-title class="pa-6 text-subtitle-1 font-weight-bold">
                 Miembros del Grupo
               </v-card-title>
@@ -895,7 +905,7 @@ onBeforeRouteLeave(() => {
               </v-card-text>
             </v-card>
 
-            <v-card class="custom-card card-container mb-6">
+            <v-card class="gt-card card-container mb-6">
               <v-card-title class="pa-6 text-subtitle-1 font-weight-bold">
                 Actividad
               </v-card-title>
@@ -995,29 +1005,32 @@ onBeforeRouteLeave(() => {
   }
 }
 
-.dashboard-bg {
-  background-color: #f0f2f5 !important;
-  min-height: 100vh;
+.project-wrap {
+  width: min(1180px, calc(100% - 24px));
+}
+
+.project-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.project-header h1 {
+  font-size: clamp(2.3rem, 6vw, 4.2rem);
+}
+
+.project-header-actions,
+.activities-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .card-container {
   margin: 10px 0;
-}
-
-.custom-card {
-  background-color: #ffffff !important;
-  color: #1a1a1a !important;
-  border-radius: 24px !important;
-  border: 1px solid rgba(0, 0, 0, 0.05) !important;
-  transition: transform 0.2s ease;
-}
-
-.custom-card:hover {
-  transform: translateY(-2px);
-}
-
-.color-navy {
-  color: #1a202c;
 }
 
 .label-text {
@@ -1034,6 +1047,15 @@ onBeforeRouteLeave(() => {
   font-size: 1rem;
   font-weight: 600;
   color: #334155;
+}
+
+.empty-inline {
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  gap: 0.75rem;
+  color: var(--gt-muted);
+  text-align: center;
 }
 
 .avatar-stack {
@@ -1097,5 +1119,18 @@ onBeforeRouteLeave(() => {
   display: flex;
   align-items: flex-end;
   gap: 4px;
+}
+
+@media (max-width: 760px) {
+  .project-header,
+  .activities-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .project-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
 }
 </style>

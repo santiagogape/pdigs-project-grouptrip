@@ -1,5 +1,7 @@
 /* color palette from <https://github.com/vuejs/theme> */
 :root {
+  color-scheme: light;
+
   --vt-c-white: #ffffff;
   --vt-c-white-soft: #f8f8f8;
   --vt-c-white-mute: #f2f2f2;
@@ -20,11 +22,28 @@
   --vt-c-text-dark-1: var(--vt-c-white);
   --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
 
-  /* color palette for this project */
-  --color-orange: #faa613;
-  --color-Molten-Orange: #ff8e3a;
-  --color-Oxblood: #c46822;
-  --color-beige: #996f2b;
+  /* GroupTrip design tokens */
+  --color-orange: #f97316;
+  --color-Molten-Orange: #fb923c;
+  --color-Oxblood: #b91c1c;
+  --color-beige: #854d0e;
+  --gt-bg: #fff7ed;
+  --gt-bg-soft: #fffbeb;
+  --gt-surface: #ffffff;
+  --gt-surface-muted: #fff1d6;
+  --gt-text: #2f1b12;
+  --gt-muted: #7c5c49;
+  --gt-border: rgba(185, 28, 28, 0.16);
+  --gt-primary: #dc2626;
+  --gt-primary-dark: #991b1b;
+  --gt-accent: #f97316;
+  --gt-warm: #facc15;
+  --gt-danger: #b91c1c;
+  --gt-radius-sm: 10px;
+  --gt-radius-md: 14px;
+  --gt-radius-lg: 22px;
+  --gt-shadow-sm: 0 8px 22px rgba(31, 41, 55, 0.08);
+  --gt-shadow-md: 0 18px 45px rgba(31, 41, 55, 0.12);
 }
 
 /* semantic color variables for this project */
@@ -42,20 +61,6 @@
   --section-gap: 160px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-background: var(--vt-c-black);
-    --color-background-soft: var(--vt-c-black-soft);
-    --color-background-mute: var(--vt-c-black-mute);
-
-    --color-border: var(--vt-c-divider-dark-2);
-    --color-border-hover: var(--vt-c-divider-dark-1);
-
-    --color-heading: var(--vt-c-text-dark-1);
-    --color-text: var(--vt-c-text-dark-2);
-  }
-}
-
 *,
 *::before,
 *::after {
@@ -66,8 +71,8 @@
 
 body {
   min-height: 100vh;
-  color: var(--color-text);
-  background: var(--color-background);
+  color: var(--gt-text);
+  background: var(--gt-bg);
   transition:
     color 0.5s,
     background-color 0.5s;
@@ -89,4 +94,19 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#app {
+  color-scheme: light;
+  background: var(--gt-bg);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color-scheme: light;
 }

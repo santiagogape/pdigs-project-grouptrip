@@ -13,7 +13,17 @@ export const authService = {
   /**
    * Registra un usuario en Firebase Auth y crea su perfil en Firestore
    */
-  async register({ email, password, displayName, photoURL }: unknown): Promise<Usuario> {
+  async register({
+    email,
+    password,
+    displayName,
+    photoURL
+  }: {
+    email: string
+    password: string
+    displayName: string
+    photoURL?: string
+  }): Promise<Usuario> {
     // 1. Crear usuario en Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const fbUser = userCredential.user;
