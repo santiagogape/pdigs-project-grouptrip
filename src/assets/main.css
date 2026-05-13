@@ -74,6 +74,11 @@ a,
   color: var(--gt-text) !important;
 }
 
+.v-application .v-container {
+  max-width: none !important;
+  padding: 5%;
+}
+
 .v-card,
 .v-list,
 .v-table,

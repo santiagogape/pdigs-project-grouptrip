@@ -361,7 +361,6 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
               <v-text-field
                 v-model="eventForm.lugar"
                 label="Lugar"
-                placeholder="Ciudad o dirección"
                 :rules="[rules.required]"
                 variant="outlined"
                 rounded="xl"
@@ -461,7 +460,6 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
               <v-text-field
                 v-model="eventForm.nombre"
                 label="Nombre del evento"
-                placeholder="Ej: Cena en la playa"
                 :rules="[rules.required, rules.minLength(3)]"
                 variant="outlined"
                 rounded="xl"

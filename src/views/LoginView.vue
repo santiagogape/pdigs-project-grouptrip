@@ -63,7 +63,6 @@ const handleLogin = async () => {
             <v-text-field
               v-model="form.email"
               label="Correo electrónico"
-              placeholder="ejemplo@correo.com"
               variant="outlined"
               density="comfortable"
               prepend-inner-icon="mdi-email-outline"
@@ -75,7 +74,6 @@ const handleLogin = async () => {
               v-model="form.password"
               :type="showPassword ? 'text' : 'password'"
               label="Contraseña"
-              placeholder="Tu contraseña"
               variant="outlined"
               density="comfortable"
               prepend-inner-icon="mdi-lock-outline"

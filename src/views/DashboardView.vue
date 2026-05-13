@@ -121,7 +121,7 @@ const formatCurrency = (value?: number) =>
 
 <style scoped>
 .dashboard-wrap {
-  width: min(1180px, calc(100% - 24px));
+  /* width: min(1180px, calc(100% - 24px)); */
   padding-block: 3rem 4rem;
 }
 

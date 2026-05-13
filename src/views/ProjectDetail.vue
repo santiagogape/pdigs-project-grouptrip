@@ -2,6 +2,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter, onBeforeRouteLeave  } from 'vue-router';
 import { projectService } from '@/services/remote/firebase/projectService';
+import { auth } from '@/services/remote/firebase/config';
 import type { Proyecto, Evento, Usuario } from '@/interfaces/models';
 import openAIService from '@/services/remote/openAI/openAIService';
 
@@ -18,6 +19,7 @@ const projectId = route.params.id as string;
 
 const showShareModal = ref(false);
 const isInitializingTrip = ref(false);
+const isDeletingProject = ref(false);
 const initializationError = ref('');
 const actionError = ref('');
 const shareLink = computed(() => `${window.location.origin}/share/${projectId}`);
@@ -28,6 +30,9 @@ const eventos = ref<Evento[]>([]);
 const miembros = ref<Usuario[]>([]);
 const loading = ref(true);
 const primerMiembro = computed(() => miembros.value[0] ?? null);
+const isProjectOwner = computed(() => {
+  return !!proyecto.value?.owner && auth.currentUser?.uid === proyecto.value.owner;
+});
 const filterMode = ref<'all' | 'day' | 'timeRangeInDay' | 'fromDay' | 'untilDay'>('all')
 const filterDate = ref('')
 const filterStartHour = ref('')
@@ -315,15 +320,124 @@ const filteredEventos = computed(() => {
     .sort(compareEventos)
 })
 
-const calendarEvents = computed(() => {
-  return [...filteredEventos.value].map((ev) => ({
-    title: ev.nombre,
-    start: eventoStartDate(ev),
-    end: eventoEndDate(ev),
-    color: 'orange',
-    allDay: false,
-  }))
+const calendarMonthDate = ref(new Date())
+const selectedCalendarDate = ref('')
+
+const calendarMonthTitle = computed(() =>
+  new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(calendarMonthDate.value)
+)
+
+const weekdayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+const dateToInputString = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const addDays = (date: Date, days: number) => {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}
+
+const calendarDayNumber = (date: Date) => parseInputDateToComparableNumber(dateToInputString(date))
+
+const eventsForCalendarDay = (date: Date) => {
+  const day = calendarDayNumber(date)
+  if (!day) return []
+
+  return filteredEventos.value.filter((ev) => ev.fechaInicio <= day && ev.fechaFin >= day)
+}
+
+const calendarDays = computed(() => {
+  const year = calendarMonthDate.value.getFullYear()
+  const month = calendarMonthDate.value.getMonth()
+  const firstOfMonth = new Date(year, month, 1)
+  const firstDayOffset = (firstOfMonth.getDay() + 6) % 7
+  const gridStart = addDays(firstOfMonth, -firstDayOffset)
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = addDays(gridStart, index)
+    const isoDate = dateToInputString(date)
+    const events = eventsForCalendarDay(date)
+
+    return {
+      date,
+      isoDate,
+      dayLabel: date.getDate(),
+      inCurrentMonth: date.getMonth() === month,
+      isToday: isoDate === dateToInputString(new Date()),
+      isSelected: isoDate === selectedCalendarDate.value,
+      events,
+    }
+  })
 })
+
+const selectedCalendarEvents = computed(() => {
+  if (!selectedCalendarDate.value) {
+    return filteredEventos.value.slice(0, 5)
+  }
+
+  const selectedDate = new Date(`${selectedCalendarDate.value}T00:00:00`)
+  return eventsForCalendarDay(selectedDate)
+})
+
+const selectedCalendarLabel = computed(() => {
+  if (!selectedCalendarDate.value) return 'Próximas actividades'
+
+  const selectedDate = new Date(`${selectedCalendarDate.value}T00:00:00`)
+  return new Intl.DateTimeFormat('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  }).format(selectedDate)
+})
+
+const calendarStats = computed(() => {
+  const daysWithEvents = new Set<string>()
+
+  for (const event of filteredEventos.value) {
+    const start = eventoStartDate(event)
+    const end = eventoEndDate(event)
+
+    for (let cursor = new Date(start); cursor <= end; cursor = addDays(cursor, 1)) {
+      daysWithEvents.add(dateToInputString(cursor))
+    }
+  }
+
+  return {
+    totalEvents: filteredEventos.value.length,
+    daysWithEvents: daysWithEvents.size,
+  }
+})
+
+const previousCalendarMonth = () => {
+  calendarMonthDate.value = new Date(
+    calendarMonthDate.value.getFullYear(),
+    calendarMonthDate.value.getMonth() - 1,
+    1
+  )
+}
+
+const nextCalendarMonth = () => {
+  calendarMonthDate.value = new Date(
+    calendarMonthDate.value.getFullYear(),
+    calendarMonthDate.value.getMonth() + 1,
+    1
+  )
+}
+
+const goToCurrentCalendarMonth = () => {
+  const today = new Date()
+  calendarMonthDate.value = new Date(today.getFullYear(), today.getMonth(), 1)
+  selectedCalendarDate.value = dateToInputString(today)
+}
+
+const selectCalendarDay = (isoDate: string) => {
+  selectedCalendarDate.value = isoDate
+}
 
 const mapEvents = computed(() => {
   return [...filteredEventos.value]
@@ -550,6 +664,39 @@ const deleteEvent = async (event: Evento) => {
   }
 };
 
+const deleteProject = async () => {
+  if (!proyecto.value || !isProjectOwner.value || isDeletingProject.value) return;
+
+  const confirmed = window.confirm(
+    `¿Eliminar el proyecto "${proyecto.value.destino}"? Esta acción borrará el viaje, sus eventos y el acceso de todos los miembros.`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    actionError.value = '';
+    isDeletingProject.value = true;
+
+    if (unsubProject) {
+      unsubProject();
+      unsubProject = undefined;
+    }
+
+    if (unsubEvents) {
+      unsubEvents();
+      unsubEvents = undefined;
+    }
+
+    await projectService.removeProject(projectId);
+    router.push({ name: 'Dashboard' });
+  } catch (error) {
+    console.error('Error eliminando proyecto:', error);
+    actionError.value = 'No se pudo eliminar el proyecto.';
+  } finally {
+    isDeletingProject.value = false;
+  }
+};
+
 onBeforeRouteLeave(() => {
   return confirmDiscardEventChanges();
 });
@@ -588,11 +735,23 @@ onBeforeRouteLeave(() => {
             <v-btn color="red-darken-3" class="gt-primary-btn" to="/dashboard" elevation="0" prepend-icon="mdi-view-dashboard-outline">
               Panel
             </v-btn>
+
+            <v-btn
+              v-if="isProjectOwner"
+              class="delete-project-btn"
+              color="error"
+              variant="tonal"
+              prepend-icon="mdi-delete-outline"
+              :loading="isDeletingProject"
+              @click="deleteProject"
+            >
+              Eliminar proyecto
+            </v-btn>
           </div>
         </header>
 
-        <v-row>
-          <v-col cols="12" md="8" class="card-container">
+        <v-row class="project-content-row" justify="center">
+          <v-col cols="12" md="10" lg="8" class="card-container itinerary-column">
             <v-card class="gt-card mb-6">
               <v-card-text class="pa-6">
                 <v-row>
@@ -850,11 +1009,133 @@ onBeforeRouteLeave(() => {
                   </v-window-item>
 
                   <v-window-item value="calendar">
-                    <div v-if="calendarEvents.length" class="mt-2">
-                      <v-calendar
-                        view-mode="month"
-                        :events="calendarEvents"
-                      />
+                    <div v-if="filteredEventos.length" class="calendar-view">
+                      <div class="calendar-toolbar">
+                        <div>
+                          <p class="gt-kicker mb-1">Calendario</p>
+                          <h3>{{ calendarMonthTitle }}</h3>
+                        </div>
+
+                        <div class="calendar-toolbar-actions">
+                          <v-btn
+                            icon="mdi-chevron-left"
+                            variant="tonal"
+                            color="red-darken-3"
+                            size="small"
+                            aria-label="Mes anterior"
+                            @click="previousCalendarMonth"
+                          />
+                          <v-btn
+                            class="gt-secondary-btn"
+                            variant="outlined"
+                            color="red-darken-3"
+                            size="small"
+                            @click="goToCurrentCalendarMonth"
+                          >
+                            Hoy
+                          </v-btn>
+                          <v-btn
+                            icon="mdi-chevron-right"
+                            variant="tonal"
+                            color="red-darken-3"
+                            size="small"
+                            aria-label="Mes siguiente"
+                            @click="nextCalendarMonth"
+                          />
+                        </div>
+                      </div>
+
+                      <div class="calendar-summary">
+                        <div>
+                          <span>{{ calendarStats.totalEvents }}</span>
+                          <small>actividades filtradas</small>
+                        </div>
+                        <div>
+                          <span>{{ calendarStats.daysWithEvents }}</span>
+                          <small>días con planes</small>
+                        </div>
+                      </div>
+
+                      <div class="calendar-layout">
+                        <section class="calendar-month" aria-label="Calendario mensual">
+                          <div
+                            v-for="label in weekdayLabels"
+                            :key="label"
+                            class="calendar-weekday"
+                          >
+                            {{ label }}
+                          </div>
+
+                          <button
+                            v-for="day in calendarDays"
+                            :key="day.isoDate"
+                            type="button"
+                            :class="[
+                              'calendar-day',
+                              {
+                                'calendar-day-muted': !day.inCurrentMonth,
+                                'calendar-day-today': day.isToday,
+                                'calendar-day-selected': day.isSelected,
+                                'calendar-day-has-events': day.events.length > 0
+                              }
+                            ]"
+                            @click="selectCalendarDay(day.isoDate)"
+                          >
+                            <span class="calendar-day-number">{{ day.dayLabel }}</span>
+                            <span v-if="day.events.length" class="calendar-event-count">
+                              {{ day.events.length }}
+                            </span>
+                            <span class="calendar-event-list">
+                              <span
+                                v-for="event in day.events.slice(0, 2)"
+                                :key="`${day.isoDate}-${event.id ?? event.nombre}`"
+                                class="calendar-event-pill"
+                              >
+                                {{ formatHora(event.horaInicio) }} {{ event.nombre }}
+                              </span>
+                            </span>
+                          </button>
+                        </section>
+
+                        <aside class="calendar-agenda">
+                          <h4>{{ selectedCalendarLabel }}</h4>
+
+                          <div v-if="selectedCalendarEvents.length" class="calendar-agenda-list">
+                            <article
+                              v-for="event in selectedCalendarEvents"
+                              :key="event.id ?? `${event.nombre}-${event.fechaInicio}-${event.horaInicio}`"
+                              class="calendar-agenda-item"
+                            >
+                              <div class="agenda-time">
+                                {{ formatHora(event.horaInicio) }}
+                              </div>
+
+                              <div class="agenda-copy">
+                                <strong>{{ event.nombre }}</strong>
+                                <span>{{ formatRangoEvento(event) }}</span>
+                                <small v-if="event.lugar">
+                                  <v-icon icon="mdi-map-marker" size="x-small" />
+                                  {{ event.lugar }}
+                                </small>
+                              </div>
+
+                              <v-btn
+                                icon="mdi-pencil"
+                                variant="text"
+                                color="red-darken-3"
+                                size="small"
+                                aria-label="Editar actividad"
+                                @click="openEditModal(event)"
+                              />
+                            </article>
+                          </div>
+
+                          <div v-else class="calendar-agenda-empty">
+                            <v-icon icon="mdi-calendar-blank-outline" />
+                            Sin actividades este día
+                          </div>
+                        </aside>
+                      </div>
                     </div>
 
                     <div v-else class="empty-inline">
@@ -878,7 +1159,7 @@ onBeforeRouteLeave(() => {
             </v-card>
           </v-col>
 
-          <v-col cols="12" md="4" class="card-container">
+          <v-col cols="12" md="10" lg="4" class="card-container side-column">
             <v-card class="gt-card mb-6">
               <v-card-title class="pa-6 text-subtitle-1 font-weight-bold">
                 Miembros del Grupo
@@ -1006,14 +1287,14 @@ onBeforeRouteLeave(() => {
 }
 
 .project-wrap {
-  width: min(1180px, calc(100% - 24px));
+  /* width: min(1180px, calc(100% - 24px)); */
 }
 
 .project-header {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 20%;
   margin-bottom: 2rem;
 }
 
@@ -1027,6 +1308,32 @@ onBeforeRouteLeave(() => {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.project-header-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.delete-project-btn {
+  border-radius: 999px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.project-content-row {
+  max-width: 1120px;
+  margin-inline: auto;
+}
+
+.itinerary-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.itinerary-column > .gt-card {
+  width: 100%;
 }
 
 .card-container {
@@ -1054,6 +1361,230 @@ onBeforeRouteLeave(() => {
   display: grid;
   place-items: center;
   gap: 0.75rem;
+  color: var(--gt-muted);
+  text-align: center;
+}
+
+.calendar-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.calendar-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.calendar-toolbar h3 {
+  color: var(--gt-text);
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  font-weight: 850;
+  line-height: 1.1;
+  text-transform: capitalize;
+}
+
+.calendar-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendar-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.calendar-summary div {
+  padding: 14px 16px;
+  border: 1px solid rgba(185, 28, 28, 0.16);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.18), rgba(249, 115, 22, 0.08));
+}
+
+.calendar-summary span {
+  display: block;
+  color: var(--gt-primary-dark);
+  font-size: 1.5rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.calendar-summary small {
+  color: var(--gt-muted);
+  font-weight: 700;
+}
+
+.calendar-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.calendar-month {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calendar-weekday {
+  color: var(--gt-muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.calendar-day {
+  position: relative;
+  min-height: 116px;
+  padding: 10px;
+  border: 1px solid rgba(185, 28, 28, 0.12);
+  border-radius: 16px;
+  background: #fffaf3;
+  color: var(--gt-text);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.calendar-day:hover {
+  border-color: rgba(220, 38, 38, 0.34);
+  box-shadow: 0 10px 24px rgba(185, 28, 28, 0.1);
+  transform: translateY(-2px);
+}
+
+.calendar-day-muted {
+  opacity: 0.48;
+}
+
+.calendar-day-today {
+  border-color: rgba(249, 115, 22, 0.7);
+  background: #fff7dc;
+}
+
+.calendar-day-selected {
+  border-color: var(--gt-primary);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
+.calendar-day-has-events {
+  background: #fff7ed;
+}
+
+.calendar-day-number {
+  color: var(--gt-text);
+  font-weight: 850;
+}
+
+.calendar-event-count {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--gt-primary);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+.calendar-event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.calendar-event-pill {
+  overflow: hidden;
+  max-width: 100%;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.15);
+  color: #7c2d12;
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-agenda {
+  min-height: 100%;
+  padding: 18px;
+  border: 1px solid rgba(185, 28, 28, 0.14);
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.calendar-agenda h4 {
+  margin-bottom: 14px;
+  color: var(--gt-text);
+  font-size: 1.05rem;
+  font-weight: 850;
+  text-transform: capitalize;
+}
+
+.calendar-agenda-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.calendar-agenda-item {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff7ed;
+}
+
+.agenda-time {
+  color: var(--gt-primary-dark);
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.agenda-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.agenda-copy strong {
+  overflow: hidden;
+  color: var(--gt-text);
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agenda-copy span,
+.agenda-copy small {
+  color: var(--gt-muted);
+  font-size: 0.78rem;
+}
+
+.calendar-agenda-empty {
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
   color: var(--gt-muted);
   text-align: center;
 }
@@ -1086,6 +1617,12 @@ onBeforeRouteLeave(() => {
   flex: 1 1 auto;
   min-width: 0;
   width: 100% !important;
+}
+
+.actividades-timeline {
+  max-width: 760px;
+  margin-inline: auto;
+  padding-inline: 8px;
 }
 
 :deep(.v-timeline-item__body) {
@@ -1131,6 +1668,43 @@ onBeforeRouteLeave(() => {
   .project-header-actions {
     width: 100%;
     flex-wrap: wrap;
+  }
+
+  .project-header-actions .v-btn {
+    flex: 1 1 180px;
+  }
+
+  .actividades-timeline {
+    max-width: 100%;
+    padding-inline: 0;
+  }
+
+  .calendar-toolbar,
+  .calendar-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .calendar-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-month {
+    gap: 5px;
+  }
+
+  .calendar-day {
+    min-height: 78px;
+    padding: 8px;
+    border-radius: 12px;
+  }
+
+  .calendar-event-pill {
+    display: none;
   }
 }
 </style>

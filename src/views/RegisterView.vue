@@ -78,7 +78,6 @@ const handleRegister = async () => {
             <v-text-field
               v-model="form.email"
               label="Correo electrónico"
-              placeholder="ejemplo@correo.com"
               variant="outlined"
               density="comfortable"
               prepend-inner-icon="mdi-email-outline"
@@ -90,7 +89,6 @@ const handleRegister = async () => {
               v-model="form.password"
               :type="showPassword ? 'text' : 'password'"
               label="Contraseña"
-              placeholder="Mínimo 8 caracteres"
               variant="outlined"
               density="comfortable"
               prepend-inner-icon="mdi-lock-outline"

@@ -150,6 +150,11 @@ export const projectService = {
   async removeProject(projectId: string): Promise<void> {
     const res = await this._removeProjectUserRelation(projectId);
     if (!res) throw new Error("No se pudo eliminar las relaciones del proyecto");
+
+    const eventsRef = collection(db, 'proyectos', projectId, 'eventos');
+    const eventsSnap = await getDocs(eventsRef);
+    await Promise.all(eventsSnap.docs.map(eventDoc => deleteDoc(eventDoc.ref)));
+
     await deleteDoc(doc(db, 'proyectos', projectId));
   },
 
