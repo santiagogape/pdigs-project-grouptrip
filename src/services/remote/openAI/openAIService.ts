@@ -92,28 +92,49 @@ class OpenAIService {
           {
             role: 'system',
             content:
-              'You generate travel plan form fields. Return only valid JSON with keys destino (string), presupuesto (number), duracionDias (integer >= 1), fechaInicio (YYYY-MM-DD, optional), fechaFin (YYYY-MM-DD, optional), nombre (string), descripcion (string), urlPortada (optional string URL). If the prompt references relative dates like "next month" or a month name like "in May", convert them into exact dates using the provided current date. Prefer future dates. Do not invent weird image URLs.'
+              [
+                'Eres un planificador experto de viajes para una app llamada GroupTrip.',
+                'Devuelve SOLO un objeto JSON válido, sin markdown ni texto adicional.',
+                'El JSON debe tener estas claves exactas: destino (string), presupuesto (number), duracionDias (integer >= 1), fechaInicio (YYYY-MM-DD, opcional), fechaFin (YYYY-MM-DD, opcional), nombre (string), descripcion (string), urlPortada (string URL opcional).',
+                'Responde en español.',
+                'Nunca uses textos genéricos como "Viaje personalizado" o "Viaje generado con IA". Si el usuario da poca información, infiere una propuesta realista y específica del destino.',
+                'El nombre debe sonar natural y concreto, por ejemplo "Aventura cultural por Paraguay" o "Escapada a Asunción y alrededores".',
+                'La descripción debe tener 1 o 2 frases útiles, mencionando experiencias plausibles del destino, ritmo del viaje y tipo de plan.',
+                'El presupuesto debe ser una estimación realista en euros para un viaje económico/medio si no se indica otra cosa.',
+                'Si el prompt usa fechas relativas como "próximo mes", "next month" o un mes específico, conviértelas a fechas exactas usando la fecha actual proporcionada. Para "próximo mes", usa el mes completo.',
+                'Para urlPortada usa una URL segura de Unsplash Source con este formato: https://source.unsplash.com/1200x800/?DESTINO,travel. Reemplaza DESTINO por el destino principal sin espacios extraños.',
+                'Ejemplo para "viaje a paraguay el próximo mes": {"destino":"Paraguay","presupuesto":1400,"duracionDias":30,"fechaInicio":"2026-06-01","fechaFin":"2026-06-30","nombre":"Aventura cultural por Paraguay","descripcion":"Recorrido por Paraguay combinando Asunción, cultura local, gastronomía y escapadas de naturaleza. Ideal para un viaje de ritmo medio con margen para descubrir ciudades, mercados y paisajes cercanos.","urlPortada":"https://source.unsplash.com/1200x800/?Paraguay,travel"}'
+              ].join(' ')
           },
           {
             role: 'user',
-            content: `Current date: ${today}. Create trip form details from this prompt: ${prompt}`
+            content: `Fecha actual: ${today}. Crea campos de formulario para este viaje: ${prompt}`
           }
         ],
-        temperature: 0.4
+        temperature: 0.35
       })
 
       const rawContent = response.choices[0]?.message?.content ?? '{}'
       const parsed = this.extractJsonObject(rawContent)
+      const destino = this.asNonEmptyString(parsed.destino, this.inferDestinationFromPrompt(prompt))
+      const nombre = this.sanitizeTripName(
+        this.asNonEmptyString(parsed.nombre, ''),
+        destino
+      )
+      const descripcion = this.sanitizeTripDescription(
+        this.asNonEmptyString(parsed.descripcion, ''),
+        destino
+      )
 
       return {
-        destino: this.asNonEmptyString(parsed.destino, 'Destino sugerido'),
+        destino,
         presupuesto: this.asPositiveNumber(parsed.presupuesto, 1000),
         duracionDias: Math.max(1, Math.round(this.asPositiveNumber(parsed.duracionDias, 5))),
         fechaInicio: this.asValidDateString(parsed.fechaInicio),
         fechaFin: this.asValidDateString(parsed.fechaFin),
-        nombre: this.asNonEmptyString(parsed.nombre, 'Viaje personalizado'),
-        descripcion: this.asNonEmptyString(parsed.descripcion, 'Viaje generado con IA'),
-        urlPortada: this.asReasonableImageUrl(parsed.urlPortada)
+        nombre,
+        descripcion,
+        urlPortada: this.asReasonableImageUrl(parsed.urlPortada) ?? this.buildDestinationImageUrl(destino)
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -316,6 +337,56 @@ class OpenAIService {
     }
 
     return undefined
+  }
+
+  private inferDestinationFromPrompt(prompt: string): string {
+    const normalized = prompt.trim()
+    const match = normalized.match(/\b(?:a|al|hacia|para|en)\s+([a-záéíóúüñ\s]+?)(?:\s+(?:el|la|los|las|este|esta|próximo|proximo|siguiente|en|con|por|durante)\b|$)/i)
+    const destination = match?.[1]?.trim() || normalized || 'Destino sugerido'
+
+    return destination
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toLocaleUpperCase('es-ES') + word.slice(1).toLocaleLowerCase('es-ES'))
+      .join(' ')
+  }
+
+  private sanitizeTripName(value: string, destino: string): string {
+    const genericNames = new Set([
+      '',
+      'viaje personalizado',
+      'viaje generado con ia',
+      'mi viaje',
+      'nuevo viaje'
+    ])
+
+    const normalized = value.trim().toLocaleLowerCase('es-ES')
+    if (genericNames.has(normalized)) {
+      return `Aventura por ${destino}`
+    }
+
+    return value.trim()
+  }
+
+  private sanitizeTripDescription(value: string, destino: string): string {
+    const normalized = value.trim().toLocaleLowerCase('es-ES')
+    const genericDescriptions = new Set([
+      '',
+      'viaje generado con ia',
+      'descripción del viaje',
+      'viaje personalizado'
+    ])
+
+    if (genericDescriptions.has(normalized)) {
+      return `Viaje por ${destino} con una mezcla de cultura local, gastronomía y visitas relajadas. Pensado para descubrir el destino con tiempo suficiente para ajustar actividades con el grupo.`
+    }
+
+    return value.trim()
+  }
+
+  private buildDestinationImageUrl(destino: string): string {
+    const query = encodeURIComponent(`${destino}, travel`)
+    return `https://source.unsplash.com/1200x800/?${query}`
   }
 }
 

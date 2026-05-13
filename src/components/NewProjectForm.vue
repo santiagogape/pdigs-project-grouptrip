@@ -203,10 +203,10 @@ const handleCreateProject = async (): Promise<void> => {
           <v-card class="gt-card pa-6" elevation="0">
             <v-row>
               <v-col cols="12" md="6">
-                <v-text-field v-model="form.destino" label="Destino" placeholder="París, Tokio, Barcelona..." variant="outlined" prepend-inner-icon="mdi-map-marker-outline" required />
+                <v-text-field v-model="form.destino" label="Destino" variant="outlined" prepend-inner-icon="mdi-map-marker-outline" required />
               </v-col>
               <v-col cols="12" md="6">
-                <v-text-field v-model="form.nombre" label="Nombre del viaje" placeholder="Aventura en París" variant="outlined" prepend-inner-icon="mdi-flag-outline" required />
+                <v-text-field v-model="form.nombre" label="Nombre del viaje" variant="outlined" prepend-inner-icon="mdi-flag-outline" required />
               </v-col>
               <v-col cols="12" sm="6">
                 <v-text-field v-model="form.fechaInicio" type="date" label="Fecha de inicio" variant="outlined" required />
@@ -218,7 +218,7 @@ const handleCreateProject = async (): Promise<void> => {
                 <v-text-field v-model.number="form.presupuesto" type="number" min="0" label="Presupuesto" prefix="€" variant="outlined" />
               </v-col>
               <v-col cols="12">
-                <v-textarea v-model="form.descripcion" rows="4" label="Descripción" placeholder="Describe el tipo de viaje, ritmo y prioridades..." variant="outlined" />
+                <v-textarea v-model="form.descripcion" rows="4" label="Descripción" variant="outlined" />
               </v-col>
               <v-col cols="12">
                 <v-text-field v-model="form.urlPortada" label="URL de imagen" variant="outlined" prepend-inner-icon="mdi-image-outline" />
@@ -246,7 +246,6 @@ const handleCreateProject = async (): Promise<void> => {
               rows="4"
               class="mt-4"
               label="Prompt para IA"
-              placeholder="Viaje de 6 días en Japón para 2 personas, presupuesto medio y plan cultural"
               variant="outlined"
             />
             <v-alert v-if="aiError" type="warning" variant="tonal" density="compact" class="mb-3">
