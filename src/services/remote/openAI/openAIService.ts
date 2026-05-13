@@ -125,6 +125,7 @@ class OpenAIService {
         this.asNonEmptyString(parsed.descripcion, ''),
         destino
       )
+      const unsplashImageUrl = await this.findUnsplashImageUrl(destino, prompt)
 
       return {
         destino,
@@ -134,7 +135,7 @@ class OpenAIService {
         fechaFin: this.asValidDateString(parsed.fechaFin),
         nombre,
         descripcion,
-        urlPortada: this.asReasonableImageUrl(parsed.urlPortada) ?? this.buildDestinationImageUrl(destino)
+        urlPortada: unsplashImageUrl ?? this.asReasonableImageUrl(parsed.urlPortada) ?? this.buildDestinationImageUrl(destino)
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -322,7 +323,6 @@ class OpenAIService {
       const url = new URL(candidate)
       const allowedHosts = new Set([
         'images.unsplash.com',
-        'source.unsplash.com',
         'picsum.photos',
         'images.pexels.com',
         'cdn.pixabay.com'
@@ -384,9 +384,68 @@ class OpenAIService {
     return value.trim()
   }
 
-  private buildDestinationImageUrl(destino: string): string {
-    const query = encodeURIComponent(`${destino}, travel`)
-    return `https://source.unsplash.com/1200x800/?${query}`
+  private async findUnsplashImageUrl(destino: string, prompt: string): Promise<string | undefined> {
+    const accessKey = import.meta.env.VITE_UNSPLASH_ACCESS_KEY
+    if (!accessKey) {
+      return undefined
+    }
+
+    const url = new URL('https://api.unsplash.com/search/photos')
+    url.searchParams.set('query', this.buildUnsplashQuery(destino, prompt))
+    url.searchParams.set('orientation', 'landscape')
+    url.searchParams.set('per_page', '1')
+    url.searchParams.set('content_filter', 'high')
+    url.searchParams.set('client_id', accessKey)
+
+    try {
+      const response = await fetch(url.toString(), {
+        headers: {
+          Accept: 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        console.warn(`Unsplash image search failed: ${response.status}`)
+        return undefined
+      }
+
+      const data = await response.json() as {
+        results?: Array<{
+          urls?: {
+            regular?: string
+            full?: string
+          }
+        }>
+      }
+
+      const imageUrl = data.results?.[0]?.urls?.regular ?? data.results?.[0]?.urls?.full
+      return this.asReasonableImageUrl(imageUrl)
+    } catch (error) {
+      console.warn('Unsplash image search failed:', error)
+      return undefined
+    }
+  }
+
+  private buildUnsplashQuery(destino: string, prompt: string): string {
+    const normalizedPrompt = prompt.toLocaleLowerCase('es-ES')
+    const interests: Array<[string, string]> = [
+      ['playa', 'beach'],
+      ['naturaleza', 'nature'],
+      ['cultural', 'culture'],
+      ['cultura', 'culture'],
+      ['gastronom', 'food'],
+      ['aventura', 'adventure'],
+      ['ciudad', 'city'],
+      ['montana', 'mountains'],
+      ['montaña', 'mountains']
+    ]
+
+    const matchedInterest = interests.find(([keyword]) => normalizedPrompt.includes(keyword))?.[1]
+    return [destino, matchedInterest, 'travel'].filter(Boolean).join(' ')
+  }
+
+  private buildDestinationImageUrl(_destino: string): string {
+    return 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&auto=format&fit=crop'
   }
 }
 
