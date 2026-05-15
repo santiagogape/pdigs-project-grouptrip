@@ -1,16 +1,34 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
+import { onMounted, onUnmounted, ref } from 'vue'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
+import { onAuthStateChanged, type User } from 'firebase/auth'
 import { auth } from '@/services/remote/firebase/config'
+import { authService } from '@/services/remote/firebase/authService'
 
 const route = useRoute()
+const router = useRouter()
+const currentUser = ref<User | null>(auth.currentUser)
+let unsubscribeAuth: (() => void) | undefined
 
 const navItems = [
   { label: 'Mis viajes', to: '/dashboard', icon: 'mdi-view-dashboard-outline' },
   { label: 'Nuevo viaje', to: '/new-project', icon: 'mdi-plus-circle-outline' },
 ]
 
-const isLoggedIn = computed(() => !!auth.currentUser)
+const handleLogout = async () => {
+  await authService.logout()
+  router.push('/login')
+}
+
+onMounted(() => {
+  unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    currentUser.value = user
+  })
+})
+
+onUnmounted(() => {
+  unsubscribeAuth?.()
+})
 </script>
 
 <template>
@@ -20,7 +38,7 @@ const isLoggedIn = computed(() => !!auth.currentUser)
         <img src="@/assets/logo/icon.small.png" alt="GroupTrip" class="brand-logo" />
       </RouterLink>
 
-      <nav class="nav-links" aria-label="Navegación principal">
+      <nav class="nav-links" aria-label="Navegacion principal">
         <RouterLink
           v-for="item in navItems"
           :key="item.to"
@@ -37,10 +55,20 @@ const isLoggedIn = computed(() => !!auth.currentUser)
         </RouterLink>
       </nav>
 
+      <v-btn
+        v-if="currentUser"
+        class="logout-btn"
+        variant="text"
+        prepend-icon="mdi-logout"
+        @click="handleLogout"
+      >
+        Salir
+      </v-btn>
+
       <RouterLink
-        :to="isLoggedIn ? '/dashboard' : '/login'"
+        :to="currentUser ? '/dashboard' : '/login'"
         class="profile-link"
-        :aria-label="isLoggedIn ? 'Ir al panel' : 'Iniciar sesión'"
+        :aria-label="currentUser ? 'Ir al panel' : 'Iniciar sesion'"
       >
         <v-avatar size="44" class="profile-avatar">
           <v-icon size="24">mdi-account-outline</v-icon>
@@ -85,7 +113,8 @@ const isLoggedIn = computed(() => !!auth.currentUser)
   margin-left: auto;
 }
 
-.nav-btn {
+.nav-btn,
+.logout-btn {
   color: var(--gt-muted) !important;
   border-radius: 999px !important;
   font-weight: 750 !important;
@@ -93,7 +122,8 @@ const isLoggedIn = computed(() => !!auth.currentUser)
   text-transform: none !important;
 }
 
-.nav-btn-active {
+.nav-btn-active,
+.logout-btn:hover {
   color: var(--gt-primary-dark) !important;
   background: rgba(15, 118, 110, 0.1) !important;
 }
@@ -114,12 +144,14 @@ const isLoggedIn = computed(() => !!auth.currentUser)
     width: 96px;
   }
 
-  .nav-btn {
+  .nav-btn,
+  .logout-btn {
     min-width: 42px !important;
     padding-inline: 0.65rem !important;
   }
 
-  .nav-btn :deep(.v-btn__content) {
+  .nav-btn :deep(.v-btn__content),
+  .logout-btn :deep(.v-btn__content) {
     display: none;
   }
 }

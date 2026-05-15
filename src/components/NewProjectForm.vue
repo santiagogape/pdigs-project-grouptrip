@@ -283,6 +283,7 @@ const handleCreateProject = async (): Promise<void> => {
 </template>
 
 <style scoped>
+
 .project-form {
   padding-block: 3rem 4rem;
 }

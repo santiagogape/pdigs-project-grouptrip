@@ -67,7 +67,6 @@ const handleRegister = async () => {
             <v-text-field
               v-model="form.name"
               label="Nombre completo"
-              placeholder="Juan Pérez"
               variant="outlined"
               density="comfortable"
               prepend-inner-icon="mdi-account-outline"

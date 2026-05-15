@@ -29,6 +29,14 @@ const proyecto = ref<Proyecto | null>(null);
 const eventos = ref<Evento[]>([]);
 const miembros = ref<Usuario[]>([]);
 const loading = ref(true);
+const projectHeaderStyle = computed(() => {
+  const fallbackImage = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1400&auto=format&fit=crop';
+  const imageUrl = (proyecto.value?.urlPortada || fallbackImage).replace(/"/g, '\\"');
+
+  return {
+    backgroundImage: `linear-gradient(115deg, rgba(15, 23, 42, 0.88), rgba(15, 118, 110, 0.58) 48%, rgba(15, 23, 42, 0.36)), url("${imageUrl}")`,
+  };
+});
 const primerMiembro = computed(() => miembros.value[0] ?? null);
 const isProjectOwner = computed(() => {
   return !!proyecto.value?.owner && auth.currentUser?.uid === proyecto.value.owner;
@@ -714,11 +722,11 @@ onBeforeRouteLeave(() => {
       </v-container>
 
       <v-container v-else-if="proyecto" class="py-10 project-wrap">
-        <header class="project-header">
-          <div>
-            <p class="gt-kicker">Itinerario compartido</p>
+        <header class="project-header" :style="projectHeaderStyle">
+          <div class="project-header-copy">
+            <p class="gt-kicker project-kicker">Itinerario compartido</p>
             <h1 class="gt-title">{{ proyecto.destino }}</h1>
-            <p class="gt-muted">{{ proyecto.descripcion }}</p>
+            <p class="gt-muted project-description">{{ proyecto.descripcion }}</p>
           </div>
 
           <div class="project-header-actions">
@@ -740,7 +748,6 @@ onBeforeRouteLeave(() => {
               v-if="isProjectOwner"
               class="delete-project-btn"
               color="error"
-              variant="tonal"
               prepend-icon="mdi-delete-outline"
               :loading="isDeletingProject"
               @click="deleteProject"
@@ -1291,16 +1298,61 @@ onBeforeRouteLeave(() => {
 }
 
 .project-header {
+  position: relative;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 20%;
-  margin-bottom: 2rem;
-  margin: 0 10%;
+  gap: clamp(1.5rem, 6vw, 5rem);
+  min-height: clamp(320px, 42vw, 520px);
+  margin: 0 auto 2rem;
+  max-width: 1120px;
+  overflow: hidden;
+  padding: clamp(1.5rem, 5vw, 3rem);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 32px;
+  background-position: center;
+  background-size: cover;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.24);
+  isolation: isolate;
+}
+
+.project-header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 16% 18%, rgba(255, 255, 255, 0.16), transparent 30%),
+    linear-gradient(180deg, transparent 40%, rgba(15, 23, 42, 0.38));
+}
+
+.project-header-copy {
+  max-width: 680px;
 }
 
 .project-header h1 {
+  margin: 0.15rem 0 0.75rem;
+  color: #ffffff;
   font-size: clamp(2.3rem, 6vw, 4.2rem);
+  text-shadow: 0 12px 32px rgba(15, 23, 42, 0.55);
+}
+
+.project-kicker {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(10px);
+}
+
+.project-description {
+  max-width: 620px;
+  color: rgba(255, 255, 255, 0.88) !important;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  line-height: 1.6;
 }
 
 .project-header-actions,
@@ -1314,6 +1366,22 @@ onBeforeRouteLeave(() => {
 .project-header-actions {
   justify-content: flex-end;
   flex-wrap: wrap;
+}
+
+.project-header-actions .v-btn {
+  border-color: rgba(255, 255, 255, 0.72) !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.22) !important;
+}
+
+.project-header-actions .gt-secondary-btn {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(10px);
+}
+
+.project-header-actions .gt-primary-btn {
+  background: #ffffff !important;
+  color: var(--gt-primary-dark) !important;
 }
 
 .delete-project-btn {

@@ -4,10 +4,14 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
+  onAuthStateChanged,
   type User as FirebaseUser
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import type { Usuario } from '@/interfaces/models';
+
+let authInitialized = false;
+let authReadyPromise: Promise<FirebaseUser | null> | null = null;
 
 export const authService = {
   /**
@@ -74,5 +78,28 @@ export const authService = {
    */
   getCurrentUser(): FirebaseUser | null {
     return auth.currentUser;
+  },
+
+  /**
+   * Espera a que Firebase restaure la sesion persistida del navegador.
+   * En recargas o enlaces directos, auth.currentUser puede ser null al principio.
+   */
+  waitForAuthReady(): Promise<FirebaseUser | null> {
+    if (authInitialized) {
+      return Promise.resolve(auth.currentUser);
+    }
+
+    if (!authReadyPromise) {
+      authReadyPromise = new Promise((resolve) => {
+        let unsubscribe = () => {};
+        unsubscribe = onAuthStateChanged(auth, (user) => {
+          authInitialized = true;
+          unsubscribe();
+          resolve(user);
+        });
+      });
+    }
+
+    return authReadyPromise;
   }
 };

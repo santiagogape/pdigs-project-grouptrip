@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import TestFirebase from '@/views/TestFirebase.vue'
-import { auth } from '@/services/remote/firebase/config';
+import { authService } from '@/services/remote/firebase/authService';
 
 
 const router = createRouter({
@@ -55,7 +55,7 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-  const currentUser = auth.currentUser;
+  const currentUser = await authService.waitForAuthReady();
 
   // Si requiere auth y no hay usuario -> Mandar al Login
   if (requiresAuth && !currentUser) {
