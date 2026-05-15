@@ -23,6 +23,7 @@ const showEventSuccessModal = ref(false);
 const eventSuccessMessage = ref('');
 const isInitializingTrip = ref(false);
 const isDeletingProject = ref(false);
+const removingMemberId = ref<string | null>(null);
 const initializationError = ref('');
 const actionError = ref('');
 const shareLink = computed(() => `${window.location.origin}/share/${projectId}`);
@@ -40,6 +41,28 @@ const projectHeaderStyle = computed(() => {
     backgroundImage: `linear-gradient(115deg, rgba(15, 23, 42, 0.88), rgba(15, 118, 110, 0.58) 48%, rgba(15, 23, 42, 0.36)), url("${imageUrl}")`,
   };
 });
+const budgetTotal = computed(() => Math.max(Number(proyecto.value?.presupuesto ?? 0), 0));
+const budgetSpent = computed(() => eventos.value.reduce((total, event) => {
+  const eventPrice = Number(event.precio ?? 0);
+  const eventExpenses = event.gastos?.reduce((sum, gasto) => sum + Number(gasto.monto ?? 0), 0) ?? 0;
+
+  return total + eventPrice + eventExpenses;
+}, 0));
+const budgetRemaining = computed(() => Math.max(budgetTotal.value - budgetSpent.value, 0));
+const budgetUsagePercent = computed(() => {
+  if (budgetTotal.value <= 0) return 0;
+  return Math.min((budgetSpent.value / budgetTotal.value) * 100, 100);
+});
+const isOverBudget = computed(() => budgetTotal.value > 0 && budgetSpent.value > budgetTotal.value);
+const budgetChartStyle = computed(() => ({
+  background: `conic-gradient(${isOverBudget.value ? '#dc2626' : '#0f766e'} ${budgetUsagePercent.value}%, #e2e8f0 0)`,
+}));
+const optionalEventsCount = computed(() => eventos.value.filter(event => event.optional).length);
+const requiredEventsCount = computed(() => Math.max(eventos.value.length - optionalEventsCount.value, 0));
+const averageEventCost = computed(() => {
+  if (!eventos.value.length) return 0;
+  return budgetSpent.value / eventos.value.length;
+});
 const primerMiembro = computed(() => miembros.value[0] ?? null);
 const isProjectOwner = computed(() => {
   return !!proyecto.value?.owner && auth.currentUser?.uid === proyecto.value.owner;
@@ -51,6 +74,12 @@ const filterEndHour = ref('')
 const showFilterDatePicker = ref(false)
 const showFilterStartTimePicker = ref(false)
 const showFilterEndTimePicker = ref(false)
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 0,
+  }).format(value);
 
 // Modal único para crear/editar
 const showEventModal = ref(false);
@@ -718,6 +747,36 @@ const deleteProject = async () => {
   }
 };
 
+const removeMemberFromProject = async (user: Usuario) => {
+  if (!proyecto.value || !isProjectOwner.value || removingMemberId.value) return;
+
+  if (user.uid === proyecto.value.owner) {
+    actionError.value = 'No puedes eliminar al dueño del proyecto.';
+    return;
+  }
+
+  const confirmed = window.confirm(`¿Eliminar a ${user.nombre} de este proyecto?`);
+  if (!confirmed) return;
+
+  try {
+    actionError.value = '';
+    removingMemberId.value = user.uid;
+    const removed = await projectService.removeUserFromProject(projectId, user.uid);
+
+    if (!removed) {
+      actionError.value = 'No se encontro la relacion de ese usuario con el proyecto.';
+      return;
+    }
+
+    await cargarMiembros();
+  } catch (error) {
+    console.error('Error eliminando miembro del proyecto:', error);
+    actionError.value = 'No se pudo eliminar al usuario del proyecto.';
+  } finally {
+    removingMemberId.value = null;
+  }
+};
+
 onBeforeRouteLeave(() => {
   return confirmDiscardEventChanges();
 });
@@ -782,7 +841,7 @@ onBeforeRouteLeave(() => {
 
                   <v-col cols="4">
                     <span class="label-text">Presupuesto</span>
-                    <div class="value-text">${{ proyecto.presupuesto }}</div>
+                    <div class="value-text">{{ formatCurrency(budgetTotal) }}</div>
                   </v-col>
 
                   <v-col cols="4">
@@ -797,7 +856,7 @@ onBeforeRouteLeave(() => {
 
             <v-card class="gt-card card-container mb-6">
               <v-card-title class="pa-6 font-weight-bold activities-title">
-                <span>Actividades</span>
+                <span>Actividad</span>
 
                 <div class="d-flex ga-2">
                   <v-btn
@@ -1189,30 +1248,69 @@ onBeforeRouteLeave(() => {
                 Miembros del Grupo
               </v-card-title>
 
-              <v-card-text class="px-6 pb-6 d-flex align-center">
-                <v-avatar
-                  v-for="user in miembros"
-                  :key="user.uid"
-                  size="40"
-                  class="avatar-stack"
-                >
-                  <v-img :src="user.urlPerfil || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'" />
-                  <v-tooltip activator="parent" location="top">{{ user.nombre }}</v-tooltip>
-                </v-avatar>
+              <v-card-text class="px-6 pb-6">
+                <div class="members-avatar-row">
+                  <v-avatar
+                    v-for="user in miembros"
+                    :key="user.uid"
+                    size="40"
+                    class="avatar-stack"
+                  >
+                    <v-img :src="user.urlPerfil || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'" />
+                    <v-tooltip activator="parent" location="top">{{ user.nombre }}</v-tooltip>
+                  </v-avatar>
 
-                <v-btn
-                  icon="mdi-plus"
-                  variant="tonal"
-                  size="small"
-                  color="grey"
-                  class="ml-2"
-                />
+                  <v-btn
+                    icon="mdi-plus"
+                    variant="tonal"
+                    size="small"
+                    color="grey"
+                    class="ml-2"
+                    @click="showShareModal = true"
+                  />
+                </div>
+
+                <v-list class="members-list mt-5" bg-color="transparent" density="comfortable">
+                  <v-list-item
+                    v-for="user in miembros"
+                    :key="`member-${user.uid}`"
+                    class="member-list-item"
+                  >
+                    <template #prepend>
+                      <v-avatar size="34">
+                        <v-img :src="user.urlPerfil || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'" />
+                      </v-avatar>
+                    </template>
+
+                    <v-list-item-title class="member-name">
+                      {{ user.nombre }}
+                    </v-list-item-title>
+
+                    <v-list-item-subtitle>
+                      {{ user.uid === proyecto.owner ? 'Dueño del proyecto' : 'Miembro invitado' }}
+                    </v-list-item-subtitle>
+
+                    <template #append>
+                      <v-btn
+                        v-if="isProjectOwner && user.uid !== proyecto.owner"
+                        icon="mdi-account-remove-outline"
+                        variant="text"
+                        color="error"
+                        size="small"
+                        aria-label="Eliminar miembro"
+                        :loading="removingMemberId === user.uid"
+                        :disabled="!!removingMemberId"
+                        @click="removeMemberFromProject(user)"
+                      />
+                    </template>
+                  </v-list-item>
+                </v-list>
               </v-card-text>
             </v-card>
 
             <v-card class="gt-card card-container mb-6">
               <v-card-title class="pa-6 text-subtitle-1 font-weight-bold">
-                Actividad
+                Organizador
               </v-card-title>
 
               <v-list bg-color="transparent" density="compact">
@@ -1224,10 +1322,67 @@ onBeforeRouteLeave(() => {
                   </template>
 
                   <v-list-item-title class="text-caption">
-                    <strong>{{ primerMiembro.nombre }}</strong> creó este proyecto
+                    <strong>{{ primerMiembro.nombre }}</strong>
                   </v-list-item-title>
                 </v-list-item>
               </v-list>
+            </v-card>
+
+            <v-card class="gt-card card-container mb-6 budget-card">
+              <v-card-title class="pa-6 pb-2 text-subtitle-1 font-weight-bold">
+                Presupuesto y estadisticas
+              </v-card-title>
+
+              <v-card-text class="px-6 pb-6">
+                <section class="budget-overview" aria-label="Resumen del presupuesto">
+                  <div class="budget-chart" :style="budgetChartStyle">
+                    <div class="budget-chart-core">
+                      <span>{{ Math.round(budgetUsagePercent) }}%</span>
+                      <small>usado</small>
+                    </div>
+                  </div>
+
+                  <div class="budget-copy">
+                    <div>
+                      <span class="label-text">Presupuesto restante</span>
+                      <strong :class="['budget-remaining', { 'budget-over': isOverBudget }]">
+                        {{ isOverBudget ? 'Sobrepasado' : formatCurrency(budgetRemaining) }}
+                      </strong>
+                    </div>
+
+                    <div class="budget-bar" aria-hidden="true">
+                      <span
+                        :class="{ 'budget-bar-over': isOverBudget }"
+                        :style="{ width: `${budgetUsagePercent}%` }"
+                      />
+                    </div>
+
+                    <div class="budget-stats">
+                      <span>Gastado: <strong>{{ formatCurrency(budgetSpent) }}</strong></span>
+                      <span>Total: <strong>{{ formatCurrency(budgetTotal) }}</strong></span>
+                    </div>
+                  </div>
+                </section>
+
+                <div class="quiet-stats" aria-label="Estadisticas del proyecto">
+                  <div class="quiet-stat">
+                    <span>Eventos</span>
+                    <strong>{{ eventos.length }}</strong>
+                  </div>
+                  <div class="quiet-stat">
+                    <span>Acordados</span>
+                    <strong>{{ requiredEventsCount }}</strong>
+                  </div>
+                  <div class="quiet-stat">
+                    <span>Opcionales</span>
+                    <strong>{{ optionalEventsCount }}</strong>
+                  </div>
+                  <div class="quiet-stat">
+                    <span>Coste medio</span>
+                    <strong>{{ formatCurrency(averageEventCost) }}</strong>
+                  </div>
+                </div>
+              </v-card-text>
             </v-card>
           </v-col>
         </v-row>
@@ -1445,6 +1600,123 @@ onBeforeRouteLeave(() => {
   font-size: 1rem;
   font-weight: 600;
   color: #334155;
+}
+
+.budget-overview {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  justify-items: center;
+  gap: clamp(1rem, 3vw, 1.75rem);
+  text-align: center;
+}
+
+.budget-chart {
+  width: 148px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06), 0 18px 35px rgba(15, 23, 42, 0.1);
+}
+
+.budget-chart-core {
+  width: 84px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.budget-chart-core span {
+  color: var(--gt-text);
+  font-size: 1.55rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.budget-chart-core small {
+  color: var(--gt-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.budget-copy {
+  display: grid;
+  gap: 0.85rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.budget-remaining {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--gt-primary-dark);
+  font-size: clamp(1.7rem, 4vw, 2.6rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.budget-over {
+  color: #dc2626;
+}
+
+.budget-bar {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.budget-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #14b8a6, #0f766e);
+  transition: width 0.35s ease;
+}
+
+.budget-bar .budget-bar-over {
+  background: linear-gradient(90deg, #f97316, #dc2626);
+}
+
+.budget-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.8rem 1.25rem;
+  color: var(--gt-muted);
+  font-size: 0.92rem;
+}
+
+.budget-stats strong {
+  color: var(--gt-text);
+}
+
+.quiet-stats {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 1.35rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gt-border);
+}
+
+.quiet-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--gt-muted);
+  font-size: 0.9rem;
+}
+
+.quiet-stat strong {
+  color: #475569;
+  font-size: 0.95rem;
+  font-weight: 800;
 }
 
 .empty-inline {
@@ -1690,6 +1962,27 @@ onBeforeRouteLeave(() => {
   margin-left: 0;
 }
 
+.members-avatar-row {
+  display: flex;
+  align-items: center;
+}
+
+.members-list {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.member-list-item {
+  border: 1px solid var(--gt-border);
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.member-name {
+  color: var(--gt-text);
+  font-weight: 800;
+}
+
 .shadow-sm {
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
@@ -1763,6 +2056,20 @@ onBeforeRouteLeave(() => {
 
   .project-header-actions .v-btn {
     flex: 1 1 180px;
+  }
+
+  .budget-overview {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .budget-copy {
+    width: 100%;
+  }
+
+  .budget-stats {
+    justify-content: center;
   }
 
   .actividades-timeline {
