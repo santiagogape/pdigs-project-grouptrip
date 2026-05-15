@@ -12,12 +12,15 @@ import TheFooter from '@/components/testing/TheFooter.vue';
 import EventModal from '@/components/EventModal.vue';
 import ShareProjectDialog from '@/components/ShareModal.vue';
 import EventsMapPanel from '@/components/EventsMapPanel.vue';
+import EventSuccessDialog from '@/components/EventSuccessDialog.vue';
 
 const route = useRoute();
 const router = useRouter();
 const projectId = route.params.id as string;
 
 const showShareModal = ref(false);
+const showEventSuccessModal = ref(false);
+const eventSuccessMessage = ref('');
 const isInitializingTrip = ref(false);
 const isDeletingProject = ref(false);
 const initializationError = ref('');
@@ -628,23 +631,31 @@ const closeEventModal = (): void => {
 
 const saveEvent = async (event: Evento) => {
   try {
-    actionError.value = '';
     if (!projectId) {
-      actionError.value = 'ID de proyecto no válido.';
+      alert('ID de proyecto no válido');
       return;
     }
 
-    if (event.id) {
+    const isEditing = !!event.id;
+
+    if (isEditing) {
       await projectService.updateEvent(projectId, event);
     } else {
       await projectService.addEventToProject(projectId, event);
     }
+
     hasUnsavedEventChanges.value = false;
     showEventModal.value = false;
     eventoSeleccionado.value = null;
+
+    eventSuccessMessage.value = isEditing
+      ? 'Evento actualizado correctamente.'
+      : 'Evento creado correctamente.';
+
+    showEventSuccessModal.value = true;
   } catch (e) {
     console.error('Error guardando evento:', e);
-    actionError.value = 'No se pudo guardar el evento.';
+    alert('No se pudo guardar el evento');
   }
 };
 
@@ -1220,7 +1231,12 @@ onBeforeRouteLeave(() => {
   @save="saveEvent"
   @changes="handleEventDirtyChange"
   />
-
+  <EventSuccessDialog
+  :is-open="showEventSuccessModal"
+  :message="eventSuccessMessage"
+  :duration="1200"
+  @close="showEventSuccessModal = false"
+  />
   <ShareProjectDialog
     v-model="showShareModal"
     :share-link="shareLink"
@@ -1706,5 +1722,18 @@ onBeforeRouteLeave(() => {
   .calendar-event-pill {
     display: none;
   }
+
+  .custom-card :deep(.v-field__input) {
+  padding-left: 18px;
+}
+
+.custom-card :deep(.v-field__append-inner) {
+  padding-right: 12px;
+}
+
+.custom-card :deep(.v-row--density-default) {
+    --v-col-gap-x: 24px;
+    --v-col-gap-y: 2%;
+}
 }
 </style>

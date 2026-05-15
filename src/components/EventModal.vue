@@ -549,4 +549,16 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
 .color-navy {
   color: #1a202c;
 }
+.custom-card :deep(.v-field__input) {
+  padding-left: 18px;
+}
+
+.custom-card :deep(.v-field__append-inner) {
+  padding-right: 12px;
+}
+
+.custom-card :deep(.v-row--density-default) {
+    --v-col-gap-x: 24px;
+    --v-col-gap-y: 2%;
+}
 </style>
