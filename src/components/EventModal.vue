@@ -550,6 +550,7 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
               <v-textarea
                 v-model="eventForm.descripcion"
                 label="Descripción"
+                placeholder="Añade una descripción del evento..."
                 variant="outlined"
                 rounded="xl"
                 rows="3"
@@ -626,14 +627,10 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
   color: #1a202c;
 }
 
-.validation-feedback {
-  flex: 1 1 auto;
-  margin-right: 16px;
-  color: #b91c1c;
-  font-size: 0.92rem;
-  font-weight: 600;
-  line-height: 1.4;
+.custom-card :deep(.v-label.v-field-label) {
+  margin-left: 6px;
 }
+
 .custom-card :deep(.v-field__input) {
   padding-left: 18px;
 }
@@ -646,12 +643,4 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
     --v-col-gap-x: 24px;
     --v-col-gap-y: 2%;
 }
-
-.custom-card :deep(.v-field--center-affix .v-label.v-field-label) {
-    left: 5%;
-}
-.custom-card :deep(.v-label.v-field-label) {
-    left: 5%;
-}
-
 </style>

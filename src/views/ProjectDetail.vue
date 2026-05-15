@@ -13,13 +13,11 @@ import EventModal from '@/components/EventModal.vue';
 import ShareProjectDialog from '@/components/ShareModal.vue';
 import EventsMapPanel from '@/components/EventsMapPanel.vue';
 import EventSuccessDialog from '@/components/EventSuccessDialog.vue';
-
 const route = useRoute();
 const router = useRouter();
 const projectId = route.params.id as string;
 
 const showShareModal = ref(false);
-const showEditProjectModal = ref(false);
 const showEventSuccessModal = ref(false);
 const eventSuccessMessage = ref('');
 const isInitializingTrip = ref(false);
@@ -620,7 +618,7 @@ const createFallbackEventFromSuggestion = (
     lng: suggestion.lng ?? null,
     optional: false,
     gastos: [],
-    descripcion: null as string | null,
+    descripcion: null
   };
 };
 
@@ -664,7 +662,7 @@ const normalizeSuggestedEvent = (
     lng: suggestion.lng ?? null,
     optional: false,
     gastos: [],
-    descripcion: null as string | null
+    descripcion: null
   };
 };
 
@@ -875,6 +873,7 @@ const removeMemberFromProject = async (user: Usuario) => {
 onBeforeRouteLeave(() => {
   return confirmDiscardEventChanges();
 });
+
 
 
 </script>
@@ -1510,7 +1509,12 @@ onBeforeRouteLeave(() => {
 
     <TheFooter />
   </v-app>
-
+  <EventSuccessDialog
+  :is-open="showEventSuccessModal"
+  :message="eventSuccessMessage"
+  :duration="1200"
+  @close="showEventSuccessModal = false"
+/>
   <EventModal
   :visible="showEventModal"
   :evento="eventoSeleccionado"
@@ -2280,80 +2284,7 @@ onBeforeRouteLeave(() => {
   gap: 4px;
 }
 
-@media (max-width: 760px) {
-  .project-header,
-  .activities-title {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .project-header-actions {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .project-header-actions .v-btn {
-    flex: 1 1 180px;
-  }
-
-  .budget-overview {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    text-align: center;
-  }
-
-  .budget-copy {
-    width: 100%;
-  }
-
-  .budget-stats {
-    justify-content: center;
-  }
-
-  .actividades-timeline {
-    max-width: 100%;
-    padding-inline: 0;
-  }
-
-  .calendar-toolbar,
-  .calendar-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .calendar-toolbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .calendar-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .calendar-month {
-    gap: 5px;
-  }
-
-  .calendar-day {
-    min-height: 78px;
-    padding: 8px;
-    border-radius: 12px;
-  }
-
-  .calendar-event-pill {
-    display: none;
-  }
-
-  .custom-card :deep(.v-field__input) {
-  padding-left: 15px;
-}
-
-.custom-card :deep(.v-field__append-inner) {
-  padding-right: 12px;
-}
-
-.custom-card :deep(.v-row--density-default) {
-    --v-col-gap-x: 24px;
-    --v-col-gap-y: 2%;
-}
+.custom-time-field :deep(.v-field--center-affix .v-label.v-field-label) {
+  left: 10% !important;
 }
 </style>
