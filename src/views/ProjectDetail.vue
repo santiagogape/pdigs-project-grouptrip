@@ -1799,7 +1799,7 @@ onBeforeRouteLeave(() => {
   }
 
   .custom-card :deep(.v-field__input) {
-  padding-left: 18px;
+  padding-left: 15px;
 }
 
 .custom-card :deep(.v-field__append-inner) {
