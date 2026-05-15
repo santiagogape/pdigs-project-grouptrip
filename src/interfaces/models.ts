@@ -26,6 +26,7 @@ export interface Evento {
   lat?: number | null;
   lng?: number | null;
   gastos: Gasto[];
+  descripcion?: string | null;
 }
 
 // --- Modelo de Proyecto ---

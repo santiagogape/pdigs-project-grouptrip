@@ -11,12 +11,14 @@ import TheFooter from '@/components/testing/TheFooter.vue';
 import EventModal from '@/components/EventModal.vue';
 import ShareProjectDialog from '@/components/ShareModal.vue';
 import EventsMapPanel from '@/components/EventsMapPanel.vue';
-
+import EventSuccessDialog from '@/components/EventSuccessDialog.vue';
 const route = useRoute();
 const router = useRouter();
 const projectId = route.params.id as string;
 
 const showShareModal = ref(false);
+const showEventSuccessModal = ref(false);
+const eventSuccessMessage = ref('');
 const isInitializingTrip = ref(false);
 const initializationError = ref('');
 const shareLink = computed(() => `${window.location.origin}/share/${projectId}`);
@@ -369,7 +371,8 @@ const createFallbackEventFromSuggestion = (
     lat: suggestion.lat ?? null,
     lng: suggestion.lng ?? null,
     optional: false,
-    gastos: []
+    gastos: [],
+    descripcion: null
   };
 };
 
@@ -412,7 +415,8 @@ const normalizeSuggestedEvent = (
     lat: suggestion.lat ?? null,
     lng: suggestion.lng ?? null,
     optional: false,
-    gastos: []
+    gastos: [],
+    descripcion: null
   };
 };
 
@@ -518,14 +522,23 @@ const saveEvent = async (event: Evento) => {
       return;
     }
 
-    if (event.id) {
+    const isEditing = !!event.id;
+
+    if (isEditing) {
       await projectService.updateEvent(projectId, event);
     } else {
       await projectService.addEventToProject(projectId, event);
     }
+
     hasUnsavedEventChanges.value = false;
     showEventModal.value = false;
     eventoSeleccionado.value = null;
+
+    eventSuccessMessage.value = isEditing
+      ? 'Evento actualizado correctamente.'
+      : 'Evento creado correctamente.';
+
+    showEventSuccessModal.value = true;
   } catch (e) {
     console.error('Error guardando evento:', e);
     alert('No se pudo guardar el evento');
@@ -550,6 +563,7 @@ const deleteEvent = async (event: Evento) => {
 onBeforeRouteLeave(() => {
   return confirmDiscardEventChanges();
 });
+
 
 
 </script>
@@ -813,6 +827,10 @@ onBeforeRouteLeave(() => {
                               <div v-if="ev.precio != null" class="text-caption text-grey-darken-1">
                                 <v-icon size="x-small" icon="mdi-currency-usd" /> {{ ev.precio }}
                               </div>
+                              <div class="text-caption text-grey-darken-1">
+                                <v-icon size="x-small" icon="mdi-text" />
+                                {{ ev.descripcion || 'No hay descripción' }}
+                              </div>
                             </div>
                           </div>
 
@@ -921,7 +939,12 @@ onBeforeRouteLeave(() => {
 
     <TheFooter />
   </v-app>
-
+  <EventSuccessDialog
+  :is-open="showEventSuccessModal"
+  :message="eventSuccessMessage"
+  :duration="1200"
+  @close="showEventSuccessModal = false"
+/>
   <EventModal
   :visible="showEventModal"
   :evento="eventoSeleccionado"
@@ -1097,5 +1120,9 @@ onBeforeRouteLeave(() => {
   display: flex;
   align-items: flex-end;
   gap: 4px;
+}
+
+.custom-time-field :deep(.v-field--center-affix .v-label.v-field-label) {
+  left: 10% !important;
 }
 </style>

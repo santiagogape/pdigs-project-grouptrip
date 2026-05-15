@@ -157,6 +157,7 @@ const buildDefaultForm = () => ({
   lng: null as number | null,
   optional: false,
   isMultiDay: false,
+  descripcion: null as string | null,
 });
 
 const mapEventoToForm = (ev: Evento | null) => {
@@ -179,6 +180,7 @@ const mapEventoToForm = (ev: Evento | null) => {
     lng: ev.lng ?? null,
     optional: ev.optional ?? false,
     isMultiDay: !!(ev.fechaFin && ev.fechaInicio && ev.fechaFin !== ev.fechaInicio),
+    descripcion: ev.descripcion ?? null,
   };
 };
 
@@ -324,6 +326,7 @@ const convertFormToEvent = (form: typeof eventForm.value): Evento => {
     lng: form.lng ?? null,
     optional: form.optional ?? false,
     gastos: props.evento?.gastos ?? [],
+    descripcion: form.descripcion?.trim() || null,
   };
 };
 
@@ -532,7 +535,18 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
                 rounded="xl"
               />
             </v-col>
-
+            <v-col cols="12">
+              <v-textarea
+                v-model="eventForm.descripcion"
+                label="Descripción"
+                placeholder="Añade una descripción del evento..."
+                variant="outlined"
+                rounded="xl"
+                rows="3"
+                auto-grow
+                clearable
+              />
+            </v-col>
             <v-col cols="12">
               <v-checkbox
                 v-model="eventForm.optional"
@@ -592,5 +606,22 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
 
 .color-navy {
   color: #1a202c;
+}
+
+.custom-card :deep(.v-label.v-field-label) {
+  margin-left: 6px;
+}
+
+.custom-card :deep(.v-field__input) {
+  padding-left: 18px;
+}
+
+.custom-card :deep(.v-field__append-inner) {
+  padding-right: 12px;
+}
+
+.custom-card :deep(.v-row--density-default) {
+    --v-col-gap-x: 24px;
+    --v-col-gap-y: 2%;
 }
 </style>
