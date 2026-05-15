@@ -27,6 +27,7 @@ const internalVisible = computed({
 const formRef = ref();
 const isFormValid = ref(false);
 const showLocationPicker = ref(false);
+const hasTriedSubmit = ref(false);
 
 const normalizeDatePickerValue = (value: unknown): string => {
   if (!value) return ''
@@ -209,10 +210,12 @@ watch(
   () => props.visible,
   async (visible) => {
     if (visible) {
+      hasTriedSubmit.value = false;
       await setFormWithoutDirty(mapEventoToForm(props.evento));
       return;
     }
 
+    hasTriedSubmit.value = false;
     resetDirtyState();
   }
 );
@@ -295,6 +298,57 @@ const rules = {
   }
 };
 
+const validationIssues = computed(() => {
+  const issues: string[] = [];
+
+  if (!eventForm.value.lugar) issues.push('seleccionar un lugar');
+  if (!eventForm.value.fechaInicio) issues.push('elegir la fecha de inicio');
+  if (eventForm.value.isMultiDay && !eventForm.value.fechaFin) issues.push('elegir la fecha de fin');
+  if (!eventForm.value.horaInicio) issues.push('indicar la hora de inicio');
+  if (!eventForm.value.horaFin) issues.push('indicar la hora de fin');
+
+  if (!eventForm.value.nombre) {
+    issues.push('escribir el nombre del evento');
+  } else if (eventForm.value.nombre.length < 3) {
+    issues.push('usar un nombre de al menos 3 caracteres');
+  }
+
+  if (!eventForm.value.tipo) issues.push('seleccionar un tipo');
+
+  if (
+    eventForm.value.precio !== null &&
+    eventForm.value.precio !== undefined &&
+    eventForm.value.precio < 0
+  ) {
+    issues.push('corregir el precio para que no sea negativo');
+  }
+
+  if (
+    eventForm.value.isMultiDay &&
+    eventForm.value.fechaInicio &&
+    eventForm.value.fechaFin &&
+    eventForm.value.fechaFin < eventForm.value.fechaInicio
+  ) {
+    issues.push('poner una fecha de fin igual o posterior a la de inicio');
+  }
+
+  if (
+    eventForm.value.horaInicio &&
+    eventForm.value.horaFin &&
+    (!eventForm.value.isMultiDay || eventForm.value.fechaInicio === eventForm.value.fechaFin) &&
+    eventForm.value.horaFin <= eventForm.value.horaInicio
+  ) {
+    issues.push('poner una hora de fin posterior a la de inicio');
+  }
+
+  return issues;
+});
+
+const validationMessage = computed(() => {
+  if (!validationIssues.value.length) return '';
+  return `Falta completar o corregir: ${validationIssues.value.join(', ')}.`;
+});
+
 const convertFormToEvent = (form: typeof eventForm.value): Evento => {
   const fechaFin = form.isMultiDay ? form.fechaFin : form.fechaInicio;
 
@@ -318,6 +372,7 @@ const convertFormToEvent = (form: typeof eventForm.value): Evento => {
 const close = () => emit('close');
 
 const handleSave = async () => {
+  hasTriedSubmit.value = true;
   const valid = await formRef.value.validate();
   if (!valid.valid) return;
 
@@ -503,6 +558,15 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
       </v-card-text>
 
       <v-card-actions class="px-6 pb-6">
+        <div
+          v-if="hasTriedSubmit && validationMessage"
+          class="validation-feedback"
+          role="alert"
+          aria-live="polite"
+        >
+          {{ validationMessage }}
+        </div>
+
         <v-spacer />
 
         <v-btn
@@ -517,7 +581,6 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
           color="red-darken-3"
           rounded="xl"
           elevation="0"
-          :disabled="!isFormValid"
           @click="handleSave"
         >
           {{ props.evento ? 'Guardar cambios' : 'Guardar evento' }}
@@ -548,6 +611,15 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
 
 .color-navy {
   color: #1a202c;
+}
+
+.validation-feedback {
+  flex: 1 1 auto;
+  margin-right: 16px;
+  color: #b91c1c;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.4;
 }
 .custom-card :deep(.v-field__input) {
   padding-left: 18px;
