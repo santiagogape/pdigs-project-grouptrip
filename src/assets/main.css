@@ -105,7 +105,6 @@ a,
 }
 
 .v-field__input::placeholder {
-  color: rgba(47, 27, 18, 0.48) !important;
   opacity: 1;
 }
 
