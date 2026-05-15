@@ -646,4 +646,12 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
     --v-col-gap-x: 24px;
     --v-col-gap-y: 2%;
 }
+
+.custom-card :deep(.v-field--center-affix .v-label.v-field-label) {
+    left: 5%;
+}
+.custom-card :deep(.v-label.v-field-label) {
+    left: 5%;
+}
+
 </style>
