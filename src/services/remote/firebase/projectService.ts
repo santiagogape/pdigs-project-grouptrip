@@ -45,6 +45,20 @@ export const projectService = {
     return newDoc.id;
   },
 
+  async updateProject(
+    projectId: string,
+    projectData: Partial<Omit<Proyecto, 'projectId' | 'owner' | 'eventos'>>
+  ): Promise<boolean> {
+    try {
+      const projectRef = doc(db, 'proyectos', projectId);
+      await updateDoc(projectRef, this.stripUndefinedValues(projectData));
+      return true;
+    } catch (error) {
+      console.error('Error actualizando proyecto:', error);
+      return false;
+    }
+  },
+
   async addUserToProject(projectId: string, userId: string): Promise<boolean> {
     const project = await this.getProject(projectId);
     if (!project) throw new Error('El proyecto no existe');

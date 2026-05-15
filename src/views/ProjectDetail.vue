@@ -19,13 +19,16 @@ const router = useRouter();
 const projectId = route.params.id as string;
 
 const showShareModal = ref(false);
+const showEditProjectModal = ref(false);
 const showEventSuccessModal = ref(false);
 const eventSuccessMessage = ref('');
 const isInitializingTrip = ref(false);
 const isDeletingProject = ref(false);
+const isSavingProject = ref(false);
 const removingMemberId = ref<string | null>(null);
 const initializationError = ref('');
 const actionError = ref('');
+const editProjectError = ref('');
 const shareLink = computed(() => `${window.location.origin}/share/${projectId}`);
 
 // Estados reactivos
@@ -81,6 +84,15 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+const editProjectForm = ref({
+  destino: '',
+  descripcion: '',
+  presupuesto: 0,
+  fechaInicio: '',
+  fechaFin: '',
+  urlPortada: '',
+});
+
 // Modal único para crear/editar
 const showEventModal = ref(false);
 const eventoSeleccionado = ref<Evento | null>(null);
@@ -104,6 +116,89 @@ const cargarMiembros = async () => {
     }
   } catch (e) {
     console.error('Error cargando miembros:', e);
+  }
+};
+
+const formatMillisForDateInput = (value?: number): string => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getUserInitials = (user: Usuario): string => {
+  const source = user.nombre?.trim() || 'U';
+  return source
+    .split(/\s+/)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase() ?? '')
+    .join('');
+};
+
+const getAvatarColor = (user: Usuario): string => {
+  const colors = ['#0f766e', '#ea580c', '#2563eb', '#be123c', '#7c3aed', '#15803d', '#b45309', '#0e7490'];
+  const seed = `${user.uid}${user.nombre}`.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return colors[seed % colors.length] ?? '#0f766e';
+};
+
+const openEditProjectModal = () => {
+  if (!proyecto.value || !isProjectOwner.value) return;
+
+  editProjectError.value = '';
+  editProjectForm.value = {
+    destino: proyecto.value.destino,
+    descripcion: proyecto.value.descripcion,
+    presupuesto: proyecto.value.presupuesto,
+    fechaInicio: formatMillisForDateInput(proyecto.value.fechaInicio),
+    fechaFin: formatMillisForDateInput(proyecto.value.fechaFin),
+    urlPortada: proyecto.value.urlPortada,
+  };
+  showEditProjectModal.value = true;
+};
+
+const saveProjectChanges = async () => {
+  if (!proyecto.value || !isProjectOwner.value || isSavingProject.value) return;
+
+  if (!editProjectForm.value.destino || !editProjectForm.value.fechaInicio || !editProjectForm.value.fechaFin) {
+    editProjectError.value = 'Completa destino y fechas para guardar el proyecto.';
+    return;
+  }
+
+  const start = new Date(`${editProjectForm.value.fechaInicio}T00:00:00`).getTime();
+  const end = new Date(`${editProjectForm.value.fechaFin}T00:00:00`).getTime();
+
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
+    editProjectError.value = 'La fecha de fin debe ser igual o posterior a la fecha de inicio.';
+    return;
+  }
+
+  try {
+    isSavingProject.value = true;
+    editProjectError.value = '';
+    const updated = await projectService.updateProject(projectId, {
+      destino: editProjectForm.value.destino.trim(),
+      descripcion: editProjectForm.value.descripcion.trim(),
+      presupuesto: Math.max(Number(editProjectForm.value.presupuesto) || 0, 0),
+      fechaInicio: start,
+      fechaFin: end,
+      urlPortada: editProjectForm.value.urlPortada.trim(),
+    });
+
+    if (!updated) {
+      editProjectError.value = 'No se pudo guardar el proyecto.';
+      return;
+    }
+
+    showEditProjectModal.value = false;
+  } catch (error) {
+    console.error('Error guardando proyecto:', error);
+    editProjectError.value = 'No se pudo guardar el proyecto.';
+  } finally {
+    isSavingProject.value = false;
   }
 };
 
@@ -818,6 +913,17 @@ onBeforeRouteLeave(() => {
 
             <v-btn
               v-if="isProjectOwner"
+              class="gt-secondary-btn"
+              prepend-icon="mdi-pencil-outline"
+              variant="outlined"
+              color="red-darken-3"
+              @click="openEditProjectModal"
+            >
+              Editar
+            </v-btn>
+
+            <v-btn
+              v-if="isProjectOwner"
               class="delete-project-btn"
               color="error"
               prepend-icon="mdi-delete-outline"
@@ -1255,8 +1361,11 @@ onBeforeRouteLeave(() => {
                     :key="user.uid"
                     size="40"
                     class="avatar-stack"
+                    :color="getAvatarColor(user)"
                   >
-                    <v-img :src="user.urlPerfil || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'" />
+                    <span class="avatar-initials">
+                      {{ getUserInitials(user) }}
+                    </span>
                     <v-tooltip activator="parent" location="top">{{ user.nombre }}</v-tooltip>
                   </v-avatar>
 
@@ -1277,8 +1386,13 @@ onBeforeRouteLeave(() => {
                     class="member-list-item"
                   >
                     <template #prepend>
-                      <v-avatar size="34">
-                        <v-img :src="user.urlPerfil || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'" />
+                      <v-avatar
+                        size="34"
+                        :color="getAvatarColor(user)"
+                      >
+                        <span class="avatar-initials">
+                          {{ getUserInitials(user) }}
+                        </span>
                       </v-avatar>
                     </template>
 
@@ -1316,8 +1430,13 @@ onBeforeRouteLeave(() => {
               <v-list bg-color="transparent" density="compact">
                 <v-list-item v-if="primerMiembro">
                   <template #prepend>
-                    <v-avatar size="30">
-                      <v-img :src="primerMiembro.urlPerfil" />
+                    <v-avatar
+                      size="30"
+                      :color="getAvatarColor(primerMiembro)"
+                    >
+                      <span class="avatar-initials">
+                        {{ getUserInitials(primerMiembro) }}
+                      </span>
                     </v-avatar>
                   </template>
 
@@ -1405,6 +1524,93 @@ onBeforeRouteLeave(() => {
   :duration="1200"
   @close="showEventSuccessModal = false"
   />
+  <v-dialog v-model="showEditProjectModal" max-width="760">
+    <v-card class="gt-card edit-project-dialog" elevation="0">
+      <v-card-title class="edit-project-title">
+        <v-icon icon="mdi-pencil-outline" color="red-darken-3" />
+        Editar proyecto
+      </v-card-title>
+
+      <v-card-text>
+        <v-alert v-if="editProjectError" type="error" variant="tonal" density="compact" class="mb-4">
+          {{ editProjectError }}
+        </v-alert>
+
+        <v-row>
+          <v-col cols="12" md="6">
+            <v-text-field
+              v-model="editProjectForm.destino"
+              label="Destino"
+              variant="outlined"
+              prepend-inner-icon="mdi-map-marker-outline"
+            />
+          </v-col>
+
+          <v-col cols="12" md="6">
+            <v-text-field
+              v-model.number="editProjectForm.presupuesto"
+              type="number"
+              min="0"
+              label="Presupuesto"
+              prefix="EUR"
+              variant="outlined"
+            />
+          </v-col>
+
+          <v-col cols="12" sm="6">
+            <v-text-field
+              v-model="editProjectForm.fechaInicio"
+              type="date"
+              label="Fecha de inicio"
+              variant="outlined"
+            />
+          </v-col>
+
+          <v-col cols="12" sm="6">
+            <v-text-field
+              v-model="editProjectForm.fechaFin"
+              type="date"
+              label="Fecha de fin"
+              :min="editProjectForm.fechaInicio"
+              variant="outlined"
+            />
+          </v-col>
+
+          <v-col cols="12">
+            <v-textarea
+              v-model="editProjectForm.descripcion"
+              rows="4"
+              label="Descripcion"
+              variant="outlined"
+            />
+          </v-col>
+
+          <v-col cols="12">
+            <v-text-field
+              v-model="editProjectForm.urlPortada"
+              label="URL de imagen"
+              variant="outlined"
+              prepend-inner-icon="mdi-image-outline"
+            />
+          </v-col>
+        </v-row>
+      </v-card-text>
+
+      <v-card-actions class="edit-project-actions">
+        <v-btn variant="text" @click="showEditProjectModal = false">
+          Cancelar
+        </v-btn>
+        <v-btn
+          class="gt-primary-btn"
+          prepend-icon="mdi-content-save-outline"
+          :loading="isSavingProject"
+          @click="saveProjectChanges"
+        >
+          Guardar cambios
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
   <ShareProjectDialog
     v-model="showShareModal"
     :share-link="shareLink"
@@ -1962,6 +2168,19 @@ onBeforeRouteLeave(() => {
   margin-left: 0;
 }
 
+.avatar-initials {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #ffffff !important;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-shadow: 0 1px 8px rgba(15, 23, 42, 0.22);
+}
+
 .members-avatar-row {
   display: flex;
   align-items: center;
@@ -1981,6 +2200,25 @@ onBeforeRouteLeave(() => {
 .member-name {
   color: var(--gt-text);
   font-weight: 800;
+}
+
+.edit-project-dialog {
+  overflow: hidden;
+}
+
+.edit-project-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 1.35rem 1.5rem 0.75rem !important;
+  color: var(--gt-text);
+  font-weight: 850 !important;
+}
+
+.edit-project-actions {
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 0 1.5rem 1.5rem !important;
 }
 
 .shadow-sm {
