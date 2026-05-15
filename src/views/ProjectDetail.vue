@@ -1296,6 +1296,7 @@ onBeforeRouteLeave(() => {
   justify-content: space-between;
   gap: 20%;
   margin-bottom: 2rem;
+  margin: 0 10%;
 }
 
 .project-header h1 {
