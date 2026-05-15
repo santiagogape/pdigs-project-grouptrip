@@ -487,7 +487,8 @@ const createFallbackEventFromSuggestion = (
     lat: suggestion.lat ?? null,
     lng: suggestion.lng ?? null,
     optional: false,
-    gastos: []
+    gastos: [],
+    descripcion: null as string | null,
   };
 };
 
@@ -530,7 +531,8 @@ const normalizeSuggestedEvent = (
     lat: suggestion.lat ?? null,
     lng: suggestion.lng ?? null,
     optional: false,
-    gastos: []
+    gastos: [],
+    descripcion: null as string | null
   };
 };
 
@@ -989,6 +991,10 @@ onBeforeRouteLeave(() => {
 
                               <div v-if="ev.precio != null" class="text-caption text-grey-darken-1">
                                 <v-icon size="x-small" icon="mdi-currency-usd" /> {{ ev.precio }}
+                              </div>
+                              <div class="text-caption text-grey-darken-1">
+                                <v-icon size="x-small" icon="mdi-text" />
+                                {{ ev.descripcion || 'No hay descripción' }}
                               </div>
                             </div>
                           </div>
