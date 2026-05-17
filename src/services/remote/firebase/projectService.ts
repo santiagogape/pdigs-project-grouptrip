@@ -59,7 +59,7 @@ export const projectService = {
     }
   },
 
-  async addUserToProject(projectId: string, userId: string): Promise<boolean> {
+  async addUserToProject(projectId: string, userId: string, inviterId?: string): Promise<boolean> {
     const project = await this.getProject(projectId);
     if (!project) throw new Error('El proyecto no existe');
 
@@ -68,6 +68,10 @@ export const projectService = {
     const snap = await getDocs(q);
 
     if (!snap.empty) return true;
+
+    if (project.privacidad === 'privado' && inviterId !== project.owner && userId !== project.owner) {
+      throw new Error('Este proyecto es privado. Solo el administrador puede invitar a nuevos miembros.');
+    }
 
     await addDoc(relationRef, { projectId, userId } satisfies ProyectoUsuario);
     return true;

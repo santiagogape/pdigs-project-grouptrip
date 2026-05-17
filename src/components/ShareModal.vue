@@ -4,6 +4,8 @@ import { ref } from 'vue'
 const props = defineProps<{
   modelValue: boolean
   shareLink?: string
+  isPrivate?: boolean
+  canInvite?: boolean
 }>()
 
 defineEmits<{
@@ -13,7 +15,7 @@ defineEmits<{
 const copied = ref(false)
 
 const copyLink = async () => {
-  if (!props.shareLink) return
+  if (!props.shareLink || props.canInvite === false) return
 
   try {
     await navigator.clipboard.writeText(props.shareLink)
@@ -41,7 +43,10 @@ const copyLink = async () => {
 
       <v-card-text>
         <p class="gt-muted mb-4">
-          Comparte este enlace con tu grupo. Al iniciar sesión podrán unirse al proyecto.
+          {{ isPrivate
+            ? 'Proyecto privado: solo el administrador puede generar invitaciones.'
+            : 'Proyecto publico: cualquier miembro puede compartir el enlace e invitar a otras personas.'
+          }}
         </p>
 
         <v-text-field
@@ -50,8 +55,13 @@ const copyLink = async () => {
           label="Enlace del proyecto"
           variant="outlined"
           append-inner-icon="mdi-content-copy"
+          :disabled="canInvite === false"
           @click:append-inner="copyLink"
         />
+
+        <v-alert v-if="canInvite === false" type="warning" variant="tonal" density="compact">
+          No puedes invitar miembros en un proyecto privado.
+        </v-alert>
 
         <v-alert v-if="copied" type="success" variant="tonal" density="compact">
           Enlace copiado al portapapeles.

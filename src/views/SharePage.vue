@@ -29,11 +29,14 @@ onMounted(async () => {
   }
 
   try {
-    await projectService.addUserToProject(token, user.uid);
+    const inviterId = typeof route.query.by === 'string' ? route.query.by : undefined;
+    await projectService.addUserToProject(token, user.uid, inviterId);
     router.replace(`/proyecto/${token}`);
   } catch (error) {
     console.error('Error anadiendo usuario al proyecto:', error);
-    errorMessage.value = 'No se pudo unir al proyecto. Comprueba que el enlace sea correcto.';
+    errorMessage.value = error instanceof Error
+      ? error.message
+      : 'No se pudo unir al proyecto. Comprueba que el enlace sea correcto.';
     loading.value = false;
   }
 });

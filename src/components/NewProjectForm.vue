@@ -24,6 +24,7 @@ const form = reactive({
   fechaInicio: '',
   fechaFin: '',
   nombre: '',
+  privacidad: 'publico' as Proyecto['privacidad'],
   presupuesto: 2000,
   descripcion: '',
   urlPortada: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=900&auto=format&fit=crop'
@@ -215,6 +216,18 @@ const handleCreateProject = async (): Promise<void> => {
                 <v-text-field v-model="form.fechaFin" type="date" label="Fecha de fin" :min="form.fechaInicio" variant="outlined" required />
               </v-col>
               <v-col cols="12" sm="6">
+                <v-select
+                  v-model="form.privacidad"
+                  label="Invitaciones"
+                  variant="outlined"
+                  prepend-inner-icon="mdi-account-plus-outline"
+                  :items="[
+                    { title: 'Publico: cualquiera puede invitar', value: 'publico' },
+                    { title: 'Privado: solo el administrador invita', value: 'privado' }
+                  ]"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
                 <v-text-field v-model.number="form.presupuesto" type="number" min="0" label="Presupuesto" prefix="€" variant="outlined" />
               </v-col>
               <v-col cols="12">
@@ -232,6 +245,9 @@ const handleCreateProject = async (): Promise<void> => {
             <v-img :src="form.urlPortada" alt="Vista previa del viaje" height="210" cover />
             <div class="preview-copy">
               <v-chip color="red-darken-3" variant="tonal" size="small">{{ form.destino || 'Destino' }}</v-chip>
+              <v-chip color="teal-darken-3" variant="tonal" size="small" class="ml-2">
+                {{ form.privacidad === 'privado' ? 'Privado' : 'Publico' }}
+              </v-chip>
               <h3>{{ form.nombre || 'Nombre del viaje' }}</h3>
               <p>{{ form.descripcion || 'La descripción aparecerá aquí mientras completas el formulario.' }}</p>
             </div>

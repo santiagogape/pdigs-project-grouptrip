@@ -33,6 +33,7 @@ export interface Evento {
 export interface Proyecto {
   projectId: string; // PK
   owner: string;     // FK -> Usuario
+  privacidad?: 'publico' | 'privado';
   urlPortada: string;
   destino: string;
   descripcion: string;
@@ -47,4 +48,3 @@ export interface ProyectoUsuario {
   projectId: string; // FK
   userId: string;    // FK
 }
-

@@ -550,7 +550,6 @@ const handleLocationConfirm = (location: { lat: number; lng: number; name?: stri
               <v-textarea
                 v-model="eventForm.descripcion"
                 label="Descripción"
-                placeholder="Añade una descripción del evento..."
                 variant="outlined"
                 rounded="xl"
                 rows="3"

@@ -23,11 +23,18 @@ const eventSuccessMessage = ref('');
 const isInitializingTrip = ref(false);
 const isDeletingProject = ref(false);
 const isSavingProject = ref(false);
+const showEditProjectModal = ref(false);
 const removingMemberId = ref<string | null>(null);
 const initializationError = ref('');
 const actionError = ref('');
 const editProjectError = ref('');
-const shareLink = computed(() => `${window.location.origin}/share/${projectId}`);
+const shareLink = computed(() => {
+  const url = new URL(`/share/${projectId}`, window.location.origin);
+  if (auth.currentUser?.uid) {
+    url.searchParams.set('by', auth.currentUser.uid);
+  }
+  return url.toString();
+});
 
 // Estados reactivos
 const proyecto = ref<Proyecto | null>(null);
@@ -68,6 +75,8 @@ const primerMiembro = computed(() => miembros.value[0] ?? null);
 const isProjectOwner = computed(() => {
   return !!proyecto.value?.owner && auth.currentUser?.uid === proyecto.value.owner;
 });
+const projectPrivacy = computed(() => proyecto.value?.privacidad ?? 'publico');
+const canInviteMembers = computed(() => projectPrivacy.value === 'publico' || isProjectOwner.value);
 const filterMode = ref<'all' | 'day' | 'timeRangeInDay' | 'fromDay' | 'untilDay'>('all')
 const filterDate = ref('')
 const filterStartHour = ref('')
@@ -85,6 +94,7 @@ const formatCurrency = (value: number) =>
 const editProjectForm = ref({
   destino: '',
   descripcion: '',
+  privacidad: 'publico' as Proyecto['privacidad'],
   presupuesto: 0,
   fechaInicio: '',
   fechaFin: '',
@@ -150,6 +160,7 @@ const openEditProjectModal = () => {
   editProjectForm.value = {
     destino: proyecto.value.destino,
     descripcion: proyecto.value.descripcion,
+    privacidad: proyecto.value.privacidad ?? 'publico',
     presupuesto: proyecto.value.presupuesto,
     fechaInicio: formatMillisForDateInput(proyecto.value.fechaInicio),
     fechaFin: formatMillisForDateInput(proyecto.value.fechaFin),
@@ -180,6 +191,7 @@ const saveProjectChanges = async () => {
     const updated = await projectService.updateProject(projectId, {
       destino: editProjectForm.value.destino.trim(),
       descripcion: editProjectForm.value.descripcion.trim(),
+      privacidad: editProjectForm.value.privacidad ?? 'publico',
       presupuesto: Math.max(Number(editProjectForm.value.presupuesto) || 0, 0),
       fechaInicio: start,
       fechaFin: end,
@@ -897,6 +909,7 @@ onBeforeRouteLeave(() => {
 
           <div class="project-header-actions">
             <v-btn
+              v-if="canInviteMembers"
               class="gt-secondary-btn"
               prepend-icon="mdi-export-variant"
               variant="outlined"
@@ -953,6 +966,20 @@ onBeforeRouteLeave(() => {
                     <span class="label-text">Estado</span>
                     <div>
                       <v-chip size="small" color="success" variant="tonal" prepend-icon="mdi-circle-medium">Activo</v-chip>
+                    </div>
+                  </v-col>
+
+                  <v-col cols="12" sm="4">
+                    <span class="label-text">Invitaciones</span>
+                    <div>
+                      <v-chip
+                        size="small"
+                        color="teal-darken-3"
+                        variant="tonal"
+                        :prepend-icon="projectPrivacy === 'privado' ? 'mdi-lock-outline' : 'mdi-earth'"
+                      >
+                        {{ projectPrivacy === 'privado' ? 'Privado' : 'Publico' }}
+                      </v-chip>
                     </div>
                   </v-col>
                 </v-row>
@@ -1369,6 +1396,7 @@ onBeforeRouteLeave(() => {
                   </v-avatar>
 
                   <v-btn
+                    v-if="canInviteMembers"
                     icon="mdi-plus"
                     variant="tonal"
                     size="small"
@@ -1561,6 +1589,19 @@ onBeforeRouteLeave(() => {
             />
           </v-col>
 
+          <v-col cols="12" md="6">
+            <v-select
+              v-model="editProjectForm.privacidad"
+              label="Invitaciones"
+              variant="outlined"
+              prepend-inner-icon="mdi-account-plus-outline"
+              :items="[
+                { title: 'Publico: cualquiera puede invitar', value: 'publico' },
+                { title: 'Privado: solo el administrador invita', value: 'privado' }
+              ]"
+            />
+          </v-col>
+
           <v-col cols="12" sm="6">
             <v-text-field
               v-model="editProjectForm.fechaInicio"
@@ -1618,6 +1659,8 @@ onBeforeRouteLeave(() => {
   <ShareProjectDialog
     v-model="showShareModal"
     :share-link="shareLink"
+    :is-private="projectPrivacy === 'privado'"
+    :can-invite="canInviteMembers"
   />
 </template>
 
