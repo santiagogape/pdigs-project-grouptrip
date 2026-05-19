@@ -105,7 +105,7 @@ onUnmounted(() => {
 
 .footer-title {
   max-width: 560px;
-  color: var(--gt-text);
+  color: black;
   font-size: clamp(2rem, 4vw, 3.1rem);
   font-weight: 850;
   line-height: 1.05;
